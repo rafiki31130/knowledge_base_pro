@@ -5,14 +5,14 @@ récurrents (Splunk, investigations, concepts transverses). Hébergée sur GitHu
 
 ## Nature et distinction
 
-| | knowledge_base | documentations_et_projets |
+| | knowledge_base | wiki |
 |---|---|---|
 | Visibilité | Public GitHub | Privé vGit |
 | Contenu | Principes, patterns génériques | Exploitation, infra réelle |
 | Audience | Tout le monde | Christian + agents internes |
 
 Règle absolue : si une information identifie une infra, un environnement, un
-client ou un utilisateur réel, elle va dans `documentations_et_projets`,
+client ou un utilisateur réel, elle va dans `wiki`,
 pas ici.
 
 ## Anonymisation — non-négociable
