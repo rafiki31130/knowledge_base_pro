@@ -18,5 +18,6 @@ abstraits, sans cas réel.
 ## Fiches existantes
 
 - [La boucle d'investigation : question → hypothèse → requête → pivot](./boucle-investigation.md)
+- [Hypothèses concurrentes et qualité de preuve](./hypotheses-concurrentes-preuve.md)
 - [Triage d'alerte : qualifier / déqualifier](./triage-alerte.md)
 - [Pivots classiques : user → host → process → network → file](./pivots-investigation.md)

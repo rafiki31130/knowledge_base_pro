@@ -20,6 +20,7 @@ de configuration spécifique à un environnement.
 ## Fiches existantes
 
 - [Deployment Server](./deployment-server.md)
+- [Cycle de vie d'un évènement : input → parsing → index → search](./cycle-de-vie-evenement.md)
 - [Parsing phase : UF vs HF/indexer](./parsing-phase-uf-vs-hf.md)
 - [Cycle de vie des buckets en multisite](./buckets-multisite-lifecycle.md)
 - [Rebalance multisite](./rebalance-multisite.md)
