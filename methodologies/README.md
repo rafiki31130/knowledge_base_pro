@@ -1,6 +1,7 @@
 # Méthodologies
 
-Méthodes et frameworks d'investigation, indépendants de tout outil.
+Méthodes et frameworks, indépendants de tout outil : investigation **et** gestion
+des services (ITIL).
 
 Cibles typiques :
 
@@ -17,7 +18,14 @@ abstraits, sans cas réel.
 
 ## Fiches existantes
 
+### Investigation
+
 - [La boucle d'investigation : question → hypothèse → requête → pivot](./boucle-investigation.md)
 - [Hypothèses concurrentes et qualité de preuve](./hypotheses-concurrentes-preuve.md)
 - [Triage d'alerte : qualifier / déqualifier](./triage-alerte.md)
 - [Pivots classiques : user → host → process → network → file](./pivots-investigation.md)
+
+### Gestion des services (ITIL)
+
+- [Documenter un SI avec ITIL : Service Model, CI et CMDB](./itil-modele-documentation.md)
+- [Gouvernance du changement ITIL (Change Enablement) et pratiques associées](./itil-gouvernance-changement.md)
