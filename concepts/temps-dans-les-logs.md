@@ -37,10 +37,10 @@ Le temps **epoch** (ou Unix time) est le nombre de secondes écoulées depuis le
 calculer et comparer.
 
 ```text
-1749391200        # secondes      → 2026-06-08T14:00:00Z
-1749391200.123    # avec fraction → précision sous-seconde
-1749391200000     # MILLIsecondes → piège : x1000
-1749391200000000  # MICROsecondes → piège : x1 000 000
+1780927200        # secondes      → 2026-06-08T14:00:00Z
+1780927200.123    # avec fraction → précision sous-seconde
+1780927200000     # MILLIsecondes → piège : x1000
+1780927200000000  # MICROsecondes → piège : x1 000 000
 ```
 
 Pièges :

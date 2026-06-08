@@ -107,7 +107,7 @@ Dans les logs, les caractères `. ( ) [ ] { } + * ? | ^ $ \` sont fréquents et
 
 ```regex
 # FAUX — le point matche n'importe quel caractère
-10.0.0.10            # matche aussi "1070010"
+10.0.0.10            # matche aussi "10x0y0z10"
 
 # CORRECT — point littéral échappé
 10\.0\.0\.10
