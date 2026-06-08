@@ -7,9 +7,9 @@ récurrents (Splunk, investigations, concepts transverses). Hébergée sur GitHu
 
 | | knowledge_base | wiki |
 |---|---|---|
-| Visibilité | Public GitHub | Privé vGit |
+| Visibilité | Public GitHub | Privé (git interne) |
 | Contenu | Principes, patterns génériques | Exploitation, infra réelle |
-| Audience | Tout le monde | Christian + agents internes |
+| Audience | Tout le monde | Mainteneurs + agents internes |
 
 Règle absolue : si une information identifie une infra, un environnement, un
 client ou un utilisateur réel, elle va dans `wiki`,
