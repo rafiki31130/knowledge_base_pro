@@ -31,3 +31,4 @@ Chaque fiche suit la même structure :
 - [Home Assistant (CLI & API)](./home-assistant.md) — CLI `ha`, `check_config`, API REST `/api/states` & `/api/services`, reload YAML.
 - [Claude Code & MCP](./claude-code-mcp.md) — CLI `claude`, config `mcpServers` (stdio/http), debug MCP (`tools/list`).
 - [Stack média conteneurisée](./stack-media.md) — patterns conteneurs, `qbittorrent-nox`, API *arr (`X-Api-Key`), VPN gluetun (Docker → [docker.md](./docker.md)).
+- [Mermaid dans Obsidian](./mermaid-obsidian.md) — diagrammes en texte : flowchart/sequence/state/ER, liens internes, thème, portabilité GitHub/Forgejo.
