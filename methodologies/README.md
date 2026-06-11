@@ -29,3 +29,7 @@ abstraits, sans cas réel.
 
 - [Documenter un SI avec ITIL : Service Model, CI et CMDB](./itil-modele-documentation.md)
 - [Gouvernance du changement ITIL (Change Enablement) et pratiques associées](./itil-gouvernance-changement.md)
+
+### Management
+
+- [Management : motivation, rôles managériaux et discipline d'équipe](./management-motivation-discipline.md)
