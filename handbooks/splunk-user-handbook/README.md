@@ -35,7 +35,7 @@ Every chapter is independent. The proposed order is pedagogical, not mandatory: 
 | 5 | [Dashboards and visualizations](05-dashboards-and-visualizations.md) | Available |
 | 6 | [Alerts and scheduled searches](06-alerts-and-scheduled-searches.md) | Available |
 | 7 | [Apps, knowledge objects, sharing and RBAC](07-apps-knowledge-objects-rbac.md) | Available |
-| 99 | [When to escalate to an admin — consolidated cheatsheet](99-escalation-cheatsheet.md) | (coming soon) |
+| 99 | [When to escalate to an admin — consolidated cheatsheet](99-escalation-cheatsheet.md) | Available |
 
 ## Conventions
 
