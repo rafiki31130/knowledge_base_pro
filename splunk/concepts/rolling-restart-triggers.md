@@ -1,3 +1,5 @@
+> 🇬🇧 English version: [EN/rolling-restart-triggers.md](EN/rolling-restart-triggers.md)
+
 # Déclencheurs de rolling restart — SHC & cluster d'indexers
 
 Quelles modifications de configuration (et quelles actions d'administration)
