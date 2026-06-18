@@ -166,53 +166,68 @@ défaut) et `-decommission_search_jobs_wait_secs`.
 
 ## 4. Table de vérité — cluster d'indexers (push via cluster manager)
 
-> **Statut : comportement attendu / documenté, non encore re-prouvé sur banc
-> dans la même campagne que la table SHC du §3.** À confirmer empiriquement par
-> la méthode du §2 sur sa propre version avant de s'y fier en prod. Les écarts
-> doc ↔ réel sont fréquents (cf. §3) — traiter chaque ligne comme une hypothèse.
+> Comportement **observé et audité empiriquement** sur Splunk Enterprise 9.4.x
+> (campagne de 35 cas, verdicts re-vérifiés par un second observateur
+> indépendant). Re-vérifier sur sa propre version par la méthode du §2.
 
 Push `apply cluster-bundle` depuis le cluster manager. Verdict du point de vue
-**cluster** (propagation aux peers).
+**cluster** (propagation aux peers). Mécanisme : chaque peer recharge à chaud ce
+qu'il peut et n'advertit au manager que les confs non-rechargeables.
 
-| Conf / action | Verdict attendu | Note |
+| Conf / action | Verdict | Note |
 |---|---|---|
-| `rolling-restart cluster-peers` (commande) | RESTART | baseline ; supporte `-percent_peers_to_restart` |
-| `props.conf` / `transforms.conf` **index-time** (`LINE_BREAKER`, `SHOULD_LINEMERGE`, `TIME_FORMAT`, `TZ`, `SEDCMD`, `TRANSFORMS-`, routing d'index, `WRITE_META`) | **RESTART** | la chaîne de parsing index-time est rejouée au restart |
-| `props.conf` / `transforms.conf` **search-time** | RELOAD | utilité limitée côté peer (le search-time joue surtout côté SH) |
-| `indexes.conf` — **ajout** d'un index | RELOAD | en 9.x (historiquement restart sur versions anciennes) |
-| `indexes.conf` — attribut « à chaud » (`maxTotalDataSizeMB`, `frozenTimePeriodInSecs`) | RELOAD | par attribut |
-| `indexes.conf` — attribut structurant (`homePath`/`coldPath`, `repFactor`, `datatype`) | RESTART | |
-| `indexes.conf` — **suppression** d'un index | **RESTART + buckets non purgés** | ⚠️ retirer un index du bundle ne supprime pas ses buckets sur disque ; purge à traiter à part |
-| `server.conf` — `[clustering]` et autres stanzas splunkd-tier (`[general]`, `[license]`) | RESTART | par stanza |
-| `limits.conf` | **RESTART** (selon stanza) | ⚠️ **opposé du SHC** : côté indexer, plusieurs stanzas `limits.conf` sont restart-required |
-| `authentication.conf` / `authorize.conf` | **RESTART** probable côté peer | ⚠️ **opposé du SHC** (où LDAP RELOAD) ; à re-prouver |
-| Certificat TLS (`server.conf [sslConfig]`, inputs SSL) | RESTART | rotation de cert |
-| `inputs.conf` réception (port d'écoute, `[splunktcp-ssl]`, `requireClientCert`) | RESTART probable | ⚠️ **contraste SHC** : un peer **est** récepteur, le listener est réellement bindé → changer le récepteur/TLS rebinde au restart. Tester les deux sens (activation/désactivation SSL) |
-| `outputs.conf` (forward to others) | RELOAD probable | |
-| App installée / activée / désactivée via bundle | RESTART probable | dépend du contenu (comme SHC) |
-| App **désinstallée** (retirée du bundle manager) | **purge autoritative** | ⚠️ **opposé du SHC** : le bundle manager est **autoritatif** — retirer une app du bundle la **purge** des peers (≠ push deployer additif) |
-| Conf déclarant un reload endpoint custom (`app.conf [triggers] reload.<conf>`) | RELOAD | rend une conf normalement restart-required rechargeable à chaud |
-| Conf locale d'un peer (hors bundle) | RESTART-REQUIRED **local** | restart manuel du seul peer, jamais rolling |
-| Re-push d'un bundle identique (sans diff) | NO-OP | aucune nouvelle génération de bundle |
-| `validate cluster-bundle` sur bundle invalide (`btool check` KO) | BLOCKED | aucun peer touché |
+| `rolling-restart cluster-peers` (commande) | RESTART | baseline, restart séquentiel des peers |
+| `props.conf` / `transforms.conf` **index-time** (`LINE_BREAKER`, `SHOULD_LINEMERGE`, `TIME_FORMAT`, `TZ`, `SEDCMD`, `TRANSFORMS-`, routing d'index, `WRITE_META`, `DEST_KEY`) | **RELOAD** | ⚠️ **contre-intuitif** : en 9.4.x la chaîne de parsing index-time est rechargée **à chaud** (`No restart required at reload`). L'idée reçue « index-time = restart » est **fausse** ici |
+| `props.conf` / `transforms.conf` **search-time** | RELOAD | |
+| `indexes.conf` — **ajout** d'un index | RELOAD | l'`IndexWriter` initialise le nouvel index à chaud |
+| `indexes.conf` — attribut « à chaud » (`maxTotalDataSizeMB`, `frozenTimePeriodInSecs`) | RELOAD | |
+| `indexes.conf` — attribut structurant (`homePath` sur un index existant) | RESTART | |
+| `indexes.conf` — **suppression** d'un index | **RESTART + buckets non purgés** | ⚠️ les buckets restent sur disque ; la purge des données est une opération distincte |
+| `server.conf` — `[clustering]`, `[general]` (splunkd-tier) | RESTART | par stanza |
+| `limits.conf` — `[search]` | **RESTART** | ⚠️ **opposé du SHC** (où la même stanza RELOAD) |
+| `authorize.conf` (rôles) | RELOAD | |
+| `authentication.conf` (bascule LDAP) | **RESTART** | ⚠️ **opposé du SHC** (où LDAP RELOAD) |
+| `datamodels.conf` (accélération) | RELOAD | |
+| Certificat TLS (`server.conf [sslConfig]`) | RESTART | rotation de cert |
+| `inputs.conf` — récepteur `[splunktcp]` (listener) | **RESTART** | ⚠️ **contraste SHC** : un peer **est** récepteur, le listener est réellement bindé |
+| `inputs.conf` — `[splunktcp-ssl]` / `requireClientCert` (activation **et** désactivation) | **RESTART** | les deux sens du toggle SSL récepteur |
+| `inputs.conf` — entrée **scriptée** (`[script://]`) | RELOAD | |
+| `outputs.conf` (forward aval) | **RESTART** | ⚠️ ne RELOAD **pas** côté peer |
+| App **installée / activée / désactivée** via bundle | RELOAD | si le contenu est reloadable ; dépend du contenu, pas de l'acte |
+| App **désinstallée** (retirée du bundle manager) | **PURGE + RELOAD** | ⚠️ **opposé du SHC** : le bundle manager est **autoritatif** → retirer une app du bundle la **purge** des peers (sans restart si le reste est reloadable) |
+| Conf déclarant un reload endpoint custom (`app.conf [triggers] reload.<conf>`) | RELOAD | rend une conf normalement restart-required rechargeable |
+| Conf locale d'un peer (`etc/system/local`, hors bundle) | NO-OP cluster + RESTART-REQUIRED **local** | non répliqué ; restart manuel du seul peer édité |
+| Re-push d'un bundle identique (sans diff) | NO-OP | `No new bundle will be pushed` |
+| Bundle invalide (`btool check` KO à l'apply) | BLOCKED | la validation peer échoue, bundle non activé |
 
-**Modulation du rolling restart IDXC** : `rolling-restart cluster-peers`
-accepte `-percent_peers_to_restart <n>` pour redémarrer les peers par lots (ce
-flag **n'existe pas** pour le SHC). Le **searchable rolling restart**
-(`-searchable true`) qui préserve la continuité de recherche **nécessite plus de
-2 peers** (avec 2 peers ou moins, pas assez de redondance pour drainer). Voir
-aussi le **mode maintenance** (`enable maintenance-mode`) qui suspend le fixup de
-buckets pendant un restart.
+**Actions du manager (hors push de conf)** :
+
+| Action | Effet observé |
+|---|---|
+| `validate cluster-bundle` (dry-run) | validation **asynchrone** ; **ne prédit pas** le restart (valide la cohérence, pas le déclenchement — §1.3) |
+| `apply --skip-validation` | contourne la validation ; la décision reload/restart est **inchangée** |
+| Restart du **manager** seul | les peers **se ré-enregistrent** ; **pas** de rolling restart des peers |
+| Mode maintenance (`enable maintenance-mode`) avant un apply restart-required | **ne change pas** le déclenchement : le restart a lieu ; seul le **fixup** de buckets est suspendu |
+| Rolling restart avec **RF/SF dégradé** | le rolling restart *classic* **ne refuse pas** (restart quand même) ; seul le **searchable** enforce la redondance |
+
+**Modulation du rolling restart IDXC** : le redémarrage **par lots** se règle via
+`server.conf [clustering]` (`percent_peers_to_restart`) ou `edit cluster-config
+-percent_peers_to_restart <n>` — ce **n'est pas** un argument de la commande CLI
+`rolling-restart cluster-peers` (qui le rejette). Le **searchable rolling
+restart** (`-searchable true`), qui préserve la continuité de recherche,
+**nécessite plus de 2 peers** (sous 3 peers, Splunk le refuse : pas assez de
+redondance pour drainer).
 
 ---
 
 ## 5. Pièges et contrastes les plus utiles
 
-- **Index-time ≠ « toujours restart ».** Côté indexer, `props`/`transforms`
-  **index-time** sont bien restart-required (la chaîne de parsing est rejouée au
-  restart), mais ce n'est pas une fatalité universelle : sur SHC les mêmes confs
-  search-time RELOAD, et côté indexer en 9.4.x certains ajouts (nouvel index)
-  RELOAD.
+- **« Index-time = restart » est FAUX en 9.4.x.** L'idée reçue veut que tout
+  réglage de parsing index-time (`LINE_BREAKER`, `SEDCMD`, `TRANSFORMS-`,
+  `WRITE_META`, routing d'index…) force un restart des indexers. **Observé :
+  ces confs RELOAD à chaud** côté peer — le reloader de conf les prend sans
+  redémarrer (`No restart required at reload`). Ne jamais présumer du restart sur
+  ce critère : mesurer.
 - **Mêmes confs, comportement OPPOSÉ selon la topologie.** `limits.conf` et
   `authentication.conf` sont **rechargés à chaud côté SHC** mais **restart côté
   indexer**. Toujours raisonner *par topologie*, jamais « cette conf = restart »
@@ -225,9 +240,12 @@ buckets pendant un restart.
 - **Suppression d'index = restart MAIS buckets non purgés.** Retirer un index du
   bundle indexer déclenche un restart, mais les **buckets restent sur disque** :
   la purge des données est une opération distincte.
-- **`-percent_peers_to_restart` n'est pas un flag SHC.** Il n'existe que pour
-  `rolling-restart cluster-peers` (IDXC). Côté SHC, la modulation passe par
-  `-searchable` / `-decommission_search_jobs_wait_secs`.
+- **`percent_peers_to_restart` est un réglage `server.conf`, pas un flag CLI.**
+  Le redémarrage par lots côté indexer se configure dans `server.conf
+  [clustering]` (ou `edit cluster-config`), **pas** en argument de
+  `rolling-restart cluster-peers` (qui le rejette). Côté SHC il n'existe pas du
+  tout — la modulation y passe par `-searchable` /
+  `-decommission_search_jobs_wait_secs`.
 - **Searchable rolling restart : il faut > 2 peers.** Avec 2 peers ou moins, pas
   assez de redondance pour drainer et préserver la recherche pendant le cycle.
 - **`web.conf httpport` côté SHC : changement non effectif.** Web-tier : le
