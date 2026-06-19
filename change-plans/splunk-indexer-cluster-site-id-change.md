@@ -179,26 +179,78 @@ Follow the official procedure (§6 reservation 2). Summary, in order:
 ### 3.4 Variant C — Rename a site label
 
 Splunk does not publish a dedicated procedure for renaming a site label in
-place. Treat this variant as a **deliberate composition** of the multisite
-configuration steps (§6 reservation 3), and consider whether it can be
-expressed instead as Variant A (move-a-peer) applied in sequence to the
-peers carrying `<old_site>`, with `<new_site>` added to the manager's
-`available_sites` first.
+place. The two sub-sections below give a **lab-validated** result (tested on a
+multisite cluster of 1 manager + 2 peers, one peer per site, 1 search head,
+`site_replication_factor origin:1,total:2`, search head on `site0`): the **naïve**
+in-place rename fails on two counts, and a **working method** exists by combining
+`splunk offline` with `site_mappings`.
 
-If a true in-place rename is required, the safe sequence is:
+#### 3.4.1 The naïve sequence FAILS — do not use it
 
-1. Add `<new_site>` to the manager's `available_sites` (so both labels
-   coexist temporarily), restart the manager.
-2. With maintenance mode enabled, edit `[general] site = <new_site>` on
-   each peer carrying `<old_site>`, restart each peer in turn, wait for
-   `Up`.
-3. Once no peer (and no search head) still references `<old_site>`,
-   remove `<old_site>` from `available_sites` and restart the manager.
-4. Disable maintenance mode and let fixup converge.
+The "obvious" sequence — add `<new_site>` to `available_sites`, then under
+maintenance mode edit `[general] site = <new_site>` on each peer and restart it
+with a plain restart, then drop `<old_site>` — **fails on two independent counts**,
+both observed empirically:
 
-This sequence is **not** an officially documented procedure — it is the
-least-bad construction from the multisite configuration pages. It belongs
-in the open reservations (§6) until validated against the target version.
+1. **Search outage during peer restarts.** A plain `splunkd` restart drops the
+   peer abruptly; the primary (searchable) copies it held are not handed off
+   first. Searches for that peer's data go incomplete until the peer returns —
+   the surviving cross-site copy is **not** promoted in time. (Under maintenance
+   mode the manager does not reassign primaries at all; even outside maintenance
+   mode the handoff is not graceful with a plain restart.)
+2. **Persistent replication/search-factor violation (stranded buckets).** A
+   bucket's **origin site is fixed at creation and is not re-homable** by any
+   direct command. Once `<old_site>` is removed from `available_sites`, a bucket
+   whose origin is `<old_site>` requires an origin copy on a site that no longer
+   has a peer → the constraint is unsatisfiable. Crucially, the manager then
+   reports **`No fixup tasks in progress`** *while* RF/SF stay **not met**: it
+   does not even attempt to repair. Waiting does not help — this is structural,
+   not a delay. Interposing a "wait for RF/SF met after each step" gate does not
+   rescue it; the gate simply times out after the first peer.
+
+Net: the naïve in-place rename leaves the cluster **searchable but
+under-replicated**, with no automatic recovery.
+
+#### 3.4.2 Working method — `splunk offline` + `site_mappings`
+
+The fix addresses each failure with the matching official mechanism:
+
+- **Continuity** ← `splunk offline` (graceful). It instructs the manager to
+  **reassign the peer's primary/searchable copies to surviving peers before the
+  peer stops**, so searchability is preserved across the down window. Use plain
+  `splunk offline` (**not** `--enforce-counts`, which would try to fully
+  re-establish RF/SF — impossible with one peer per site — and block).
+- **Re-homing the stranded copies** ← `site_mappings`. This is Splunk's official
+  **site-decommissioning** mechanism: mapping `<old_site>:<new_site>` tells the
+  manager that the origin bucket copies bound to the (now removed) `<old_site>`
+  belong to `<new_site>`, which makes the conformance accounting recompute and
+  the copies re-home onto the new site's peer. This is the signal the manager
+  lacks in the naïve sequence.
+
+Validated sequence (per peer carrying `<old_site>` → `<new_site>`):
+
+1. Pre-flight: confirm the cluster is healthy and **all buckets are warm and
+   fully replicated** (`Replication/Search factor met`, `No fixup`). Hot,
+   not-yet-replicated buckets are the real cause of long outages — let them roll
+   and replicate first.
+2. Add the new site label(s) to the manager's `available_sites` (old and new
+   coexist), restart the manager. (The manager is not in the data path; its
+   restart does not interrupt search.)
+3. For each peer: `splunk offline` (plain) → wait for the manager to confirm the
+   primary reassignment → edit `[general] site = <new_site>` → `splunk start`.
+   Searchability is preserved throughout (graceful handoff).
+4. On the manager, **in the same restart**: set
+   `[clustering] site_mappings = <old_site>:<new_site>[,<old_site2>:<new_site2>]`
+   **and** remove the old label(s) from `available_sites`, then restart the
+   manager. RF/SF re-converges (origin copies re-homed to the new site) —
+   observed convergence from seconds to ~1 minute.
+5. **Cleanup**: once RF/SF are met and stable, remove the now-inert
+   `site_mappings` stanza at the next maintenance window (see reservation §6.16).
+
+This sequence achieved **zero search interruption and full RF/SF reconvergence**
+in lab. It is still **not** an officially documented "rename a site" procedure —
+it is a deliberate, validated composition of two official mechanisms; treat the
+reserves in §6 (especially scale revalidation) as binding before production use.
 
 ### 3.5 Exit maintenance and fixup (all variants)
 
@@ -328,12 +380,16 @@ intentionally generic.
    [Migrate an indexer cluster from single-site to multisite (Splunk Docs)](https://help.splunk.com/en/data-management/manage-splunk-enterprise-indexers/10.2/deploy-and-configure-a-multisite-indexer-cluster/migrate-an-indexer-cluster-from-single-site-to-multisite).
    Verify the toggle that forces existing buckets to adhere to the new
    multisite RF/SF.
-3. **Variant C — no official procedure**. Splunk does not publish a
-   dedicated "rename a site" procedure. The sequence proposed in §3.4 is
-   constructed from the multisite configuration pages and is **not**
-   officially blessed. Validate it on a non-production cluster of similar
-   shape, or seek confirmation from Splunk support before applying it to
-   production.
+3. **Variant C — no official procedure, but a lab-validated method exists**.
+   Splunk publishes no dedicated "rename a site" procedure. The **naïve**
+   in-place rename (§3.4.1) is **proven to fail** (search outage + permanently
+   stranded buckets / RF-SF not met, since a bucket's origin site is not
+   re-homable). The **working method** (§3.4.2) composes `splunk offline`
+   (continuity) with `site_mappings` (the official site-decommission re-homing
+   mechanism); it achieved zero outage and full RF/SF reconvergence in a lab on
+   a 1-CM + 2-peer (one per site) + 1-SH cluster, `origin:1,total:2`. It remains
+   a composition, not a blessed procedure — revalidate at production scale and
+   honour reservations §6.16–§6.18 before applying to production.
 4. **Splunk version**. Cluster behaviour, terminology
    (`master`/`manager`) and CLI shape changed across versions. Match the
    procedure page to the version actually deployed.
@@ -368,9 +424,26 @@ intentionally generic.
 14. **Operational window and approvals**. Change-advisory-board approval,
     stakeholder communication, downstream-consumer coordination belong to
     the change governance process, not this technical plan.
-15. **Naming convention for site labels**. `<new_site>` must follow
-    whatever convention the cluster manager already enforces (length,
-    charset, lower case).
+15. **Naming convention for site labels**. Site labels are `site<N>`
+    (`site1`–`site63`); `site0` is **reserved for search heads** (it disables
+    search affinity so the SH searches all sites) and must **never** appear in
+    `available_sites`. Non-numeric labels (e.g. `site_a`) are rejected. A
+    manager must sit on a **real** site (not `site0`).
+16. **Remove `site_mappings` after convergence** (working method, §3.4.2). The
+    `site_mappings` stanza stays in the manager config after the rename; it is
+    inert once RF/SF are met but is a source of confusion and should be removed
+    at the next maintenance window. Verify RF/SF stay met after removal.
+17. **Transient under-replication window**. During each peer's `offline`→
+    rename→`start`, the cluster is briefly below its replication factor for that
+    peer's buckets (fault tolerance is momentarily reduced even though search
+    stays complete via the surviving copy). Size the window against the per-peer
+    restart time; avoid overlapping with other risk.
+18. **Scale and load revalidation**. The working method was validated on a
+    **small** dataset, **one peer per site**, and **without concurrent search
+    load**. Re-validate on production-representative bucket counts, peers-per-site
+    and query load before generalised rollout. With ≥2 peers per site, the
+    official Variant A (move-a-peer, §3.2) becomes cleanly applicable and may be
+    preferable.
 
 ## References
 
@@ -380,6 +453,9 @@ intentionally generic.
   <https://help.splunk.com/en/data-management/manage-splunk-enterprise-indexers/10.2/deploy-and-configure-a-multisite-indexer-cluster/migrate-an-indexer-cluster-from-single-site-to-multisite>
 - Splunk Docs — Multisite indexer cluster architecture:
   <https://docs.splunk.com/Documentation/Splunk/9.4.1/Indexer/Multisitearchitecture>
+- Splunk Docs — Decommission a site (source of the `site_mappings` mechanism used
+  by the Variant C working method, §3.4.2):
+  <https://docs.splunk.com/Documentation/Splunk/9.4.1/Indexer/Decommissionasite>
 - Splunk Docs — Use maintenance mode:
   <https://docs.splunk.com/Documentation/Splunk/latest/Indexer/Usemaintenancemode>
 - See also: [ITIL change governance](../methodologies/itil-gouvernance-changement.md)
