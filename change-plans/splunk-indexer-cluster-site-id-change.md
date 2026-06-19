@@ -86,68 +86,100 @@ Each failure is addressed with the matching official mechanism:
 4. Pre-arrange monitoring suppression (the rename briefly perturbs RF/SF
    accounting and will fire cluster-health alerts).
 
-### 2.2 Procedure
+### 2.2 Procedure (runbook)
 
 Rename `<old_site>` → `<new_site>` (repeat the mapping for each site being
-renamed). **Do not hold maintenance mode across the whole sequence** — the
-manager must be free to re-replicate; the graceful `splunk offline` is what
-protects continuity, not maintenance mode.
+renamed). The commands below are the **actual operations** validated in lab,
+with generic placeholders. `$CONF` = `$SPLUNK_HOME/etc/system/local/server.conf`
+on the node being edited.
 
-1. **Manager — declare the new site(s).** Add the new label(s) to
-   `available_sites` so old and new coexist, then restart the manager. The
-   manager is **not** in the data path, so its restart does not interrupt search.
-   ```ini
-   # server.conf on the cluster manager
-   [clustering]
-   available_sites = <old_site>,<new_site>     # both coexist for now
-   ```
-2. **Each peer — graceful offline, relabel, start.** Per peer carrying
-   `<old_site>`, sequentially (never in parallel):
-   ```bash
-   splunk offline -auth <admin>:<password>     # plain; NOT --enforce-counts
-   # wait for the manager to confirm primary reassignment is complete
-   # edit [general] site = <new_site> in server.conf
-   splunk start
-   ```
-   Searchability is preserved throughout (primaries were handed off before the
-   stop).
-3. **Manager — map and trim, in one restart.** Set `site_mappings` **and** remove
-   the old label(s) from `available_sites`, then restart the manager:
-   ```ini
-   # server.conf on the cluster manager
-   [clustering]
-   available_sites = <new_site>                # old label(s) removed
-   site_mappings   = <old_site>:<new_site>     # comma-separate multiple maps
-   ```
-   RF/SF re-converge as the origin copies re-home to the new site (observed
-   convergence: seconds to ~1 minute for a small cluster).
+> **Do NOT enable maintenance mode for this rename** (proven counter-productive
+> in lab — §8, Run 7). `splunk offline` works by having the **manager reassign the
+> peer's primary copies to the surviving peers before the peer stops** — but
+> maintenance mode **suspends exactly that reassignment**. With maintenance mode
+> on, the renamed peer's data drops out of search during the change (multi-second
+> gaps; `splunk offline` may even hit its decommission force-timeout), whereas
+> **without** maintenance mode continuity is preserved and the manager
+> re-replicates normally. Maintenance mode buys nothing here and breaks the one
+> guarantee the method relies on.
 
-   > **Why this exact order is the *only* valid one.** Three Splunk constraints,
-   > each verified empirically (§8), box you into the sequence above:
-   > 1. **`site_mappings` cannot reference a site still in `available_sites`.**
-   >    Setting `site_mappings = <old_site>:<new_site>` while `<old_site>` is still
-   >    listed is rejected and crash-loops the manager:
-   >    `Available site cannot be present in From-relation of tuple in site_mappings`.
-   >    → `site_mappings` can only appear once the old label is being removed.
-   > 2. **A peer only registers if its `[general] site` is in `available_sites`.**
-   >    A peer still on `<old_site>` whose label has been dropped from
-   >    `available_sites` is **rejected at heartbeat** (`site <old_site> not in
-   >    available_sites`) and ejected — losing its data from search. → the old
-   >    label must stay in `available_sites` until **after** the peers are renamed.
-   > 3. **`site_mappings` re-homes *buckets*, it does not register *peers*.** The
-   >    `site ∈ available_sites` check runs **before** any `site_mappings`
-   >    processing, so you cannot shortcut by listing only the target sites up
-   >    front and letting the mapping pull the old-labelled peers in — it won't.
-   >
-   > Combined: rename the peers **while both old and new labels are in
-   > `available_sites`** (constraint 2), then drop the old labels **and** add their
-   > `site_mappings` **in the same manager restart** (constraint 1), which re-homes
-   > the stranded buckets (constraint 3). That is exactly steps 1→3 above.
-4. **Manager and search head site.** The manager itself must sit on a **real**
-   site (set its `[general] site` to a surviving `<new_site>` if it was on a
-   renamed one). A search head set to `site0` (search-affinity disabled) needs
-   **no** change — `site0` is reserved for search heads and never appears in
-   `available_sites`.
+> **Secret & auth handling (do this on every step).** The cluster `pass4SymmKey`
+> lives in `[clustering]` of `server.conf`. **Never rewrite the whole stanza**
+> (that would force you to re-inject the secret) — edit **only** the one line you
+> need with a targeted `sed`, leaving `pass4SymmKey` untouched. **Never** pass
+> credentials in `argv` (`-auth user:pass`): authenticate the CLI via environment
+> variables supplied on stdin, e.g.
+> `printf 'export SPLUNK_USERNAME=admin\nexport SPLUNK_PASSWORD=%s\n<cmd>\n' "$PW" | bash -s`,
+> with `$PW` read once from your secret store.
+
+**1. Manager — declare the new site(s).** Add the new label(s) so old and new
+coexist; the manager is not in the data path, so its restart does not interrupt
+search.
+```bash
+sed -i 's/^available_sites = .*/available_sites = <old_site>,<new_site>/' "$CONF"
+systemctl restart Splunkd            # or: splunk restart, per your service setup
+splunk btool server list clustering | grep -E 'available_sites'   # verify
+```
+
+**2. Each peer carrying `<old_site>` — sequentially, never in parallel.** Graceful
+offline → relabel → start; confirm the peer is back `Up`/`Searchable` before the
+next one.
+```bash
+# graceful decommission: manager reassigns THIS peer's primaries to the surviving
+# peer BEFORE splunkd stops → search stays complete. Plain offline, NOT --enforce-counts.
+printf 'export SPLUNK_USERNAME=admin\nexport SPLUNK_PASSWORD=%s\nsplunk offline\n' "$PW" | bash -s
+# once splunkd has stopped, relabel only the [general] site line, then start:
+sed -i 's/^site = .*/site = <new_site>/' "$CONF"
+systemctl start Splunkd
+# verify before moving on:  cluster-status shows this peer Up, Searchable, site=<new_site>
+```
+
+**3. Manager — map + trim, in the SAME restart.** Drop the old label(s) from
+`available_sites` **and** add the `site_mappings`, in one edit/restart (the order
+is forced — see box below). If the manager itself sat on a renamed site, relabel
+its `[general] site` too.
+```bash
+sed -i 's/^available_sites = .*/available_sites = <new_site>/' "$CONF"
+sed -i '/^\[clustering\]/a site_mappings = <old_site>:<new_site>' "$CONF"  # comma-separate multiple maps
+sed -i 's/^site = .*/site = <new_site>/' "$CONF"        # only if the manager was on a renamed site
+systemctl restart Splunkd
+# RF/SF re-converge as the origin copies re-home to the new site
+# (observed: seconds to ~1 minute on a small cluster).
+```
+
+**4. Verify convergence.** Poll until met:
+```bash
+splunk show cluster-status --verbose
+# expect: Site replication factor met YES, Site search factor met YES,
+#         all peers Up with their NEW site, searchable copies N/N per site, No fixup.
+```
+
+> **Why the step-3 order is the *only* valid one.** Three Splunk constraints,
+> each verified empirically (§8), box you into the sequence above:
+> 1. **`site_mappings` cannot reference a site still in `available_sites`.**
+>    Setting `site_mappings = <old_site>:<new_site>` while `<old_site>` is still
+>    listed is rejected and crash-loops the manager:
+>    `Available site cannot be present in From-relation of tuple in site_mappings`.
+>    → `site_mappings` can only appear once the old label is being removed.
+> 2. **A peer only registers if its `[general] site` is in `available_sites`.**
+>    A peer still on `<old_site>` whose label has been dropped from
+>    `available_sites` is **rejected at heartbeat** (`site <old_site> not in
+>    available_sites`) and ejected — losing its data from search. → the old
+>    label must stay in `available_sites` until **after** the peers are renamed.
+> 3. **`site_mappings` re-homes *buckets*, it does not register *peers*.** The
+>    `site ∈ available_sites` check runs **before** any `site_mappings`
+>    processing, so you cannot shortcut by listing only the target sites up
+>    front and letting the mapping pull the old-labelled peers in — it won't.
+>
+> Combined: rename the peers **while both old and new labels are in
+> `available_sites`** (constraint 2), then drop the old labels **and** add their
+> `site_mappings` **in the same manager restart** (constraint 1), which re-homes
+> the stranded buckets (constraint 3). That is exactly steps 1→3 above.
+
+**Manager and search-head site labels.** The manager must sit on a **real** site
+that is in `available_sites` (relabel its `[general] site` in step 3 if it was on a
+renamed one). A search head set to `site0` (search-affinity disabled) needs **no**
+change — `site0` is reserved for search heads and never appears in `available_sites`.
 
 ### 2.3 Cleanup
 
@@ -337,6 +369,15 @@ with **zero** ticks losing a `host`.
   `available_sites` until the peers are renamed.
 - Together, runs 4/5/6 show the ordering of §2.2 is the **unique** valid sequence,
   forced by the three constraints listed in the §2.2 box.
+- A 7th run repeated the validated method (run 4) but **with maintenance mode
+  enabled** throughout — the "standard" reconfiguration practice. It **fails**: the
+  renamed peer's data drops out of search during the change (~36 s window in one
+  clean run; in another the peer's `splunk offline` hit its ~5-minute decommission
+  force-timeout). Cause: `splunk offline` relies on the manager **reassigning the
+  peer's primaries before it stops**, and maintenance mode **suspends precisely that
+  reassignment**. RF/SF do reconverge once maintenance mode is disabled, but the
+  search gap during the change makes it strictly worse than run 4 (0 outage, no
+  maintenance mode). → **do not use maintenance mode for this rename** (§2.2).
 
 **Independent audit.** Run 4 was re-verified by an independent reviewer who
 re-derived the result from the raw probe log (0/406 ticks lost a `host` →
