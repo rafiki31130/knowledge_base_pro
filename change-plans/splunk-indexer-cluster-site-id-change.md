@@ -399,6 +399,24 @@ with **zero** ticks losing a `host`.
   reinforces the §6.3 reservation: more peers per site only helps if you move
   them **one at a time with `splunk offline`**, never by hard-stopping a whole
   site at once.
+- Two further runs isolated the **two variables independently** on the two-peers-
+  per-site topology, taking *both* peers of a site down **together** each time (a
+  deliberately adversarial choice). With `splunk offline` **and** maintenance mode
+  on: the shutdown windows are now **clean** (offline reassigns the primaries to
+  the surviving site before stopping, so even both-peers-down loses nothing), but
+  an outage of comparable size reappears **right after maintenance mode is
+  disabled** — the fixup that maintenance mode had suspended runs late and a host's
+  searchable copy is briefly missing. Same root cause as the 7th run. Dropping
+  maintenance mode entirely (same `splunk offline`, no maintenance mode) collapses
+  the outage to a brief transient (a couple of probe ticks during the post-restart
+  re-homing fixup, on one phase only). **Conclusion across the whole series: the
+  shutdown method and maintenance mode are separable, and maintenance mode is the
+  dominant cause of outage — `splunk offline` without maintenance mode is the only
+  combination that approaches zero, and it scales from one to two peers per site.**
+  (These last runs were measured on a lab cluster that had been relabelled in place
+  several times rather than rebuilt clean; the residual sub-5-second transient may
+  be an artefact of that non-pristine state — the one-peer-per-site run 4 measured
+  exactly zero.)
 
 **Independent audit.** Run 4 was re-verified by an independent reviewer who
 re-derived the result from the raw probe log (0/406 ticks lost a `host` →
