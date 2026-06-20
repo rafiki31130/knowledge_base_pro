@@ -269,7 +269,12 @@ persistent fixup, and the continuity probe reported zero interruption.
 3. **Topology with ≥2 peers per site.** With more than one peer per site the
    official *move-a-peer* procedure (offline + wipe + reprovision) becomes cleanly
    applicable per peer and may be preferable; this composition exists precisely
-   because one-peer-per-site makes the wipe approach impractical.
+   because one-peer-per-site makes the wipe approach impractical. **Do not promise a
+   strict zero-outage at ≥2 peers per site with this method**: lab measurement on a
+   freshly rebuilt cluster (§8 control run) still showed a small, stochastic per-host
+   gap (seconds to low tens of seconds) during the post-restart re-homing fixup — the
+   shutdown windows stay clean, but the fixup is not instantaneous. The strict-zero
+   result was specific to one peer per site.
 4. **Replication policy.** Validated with `site_replication_factor
    origin:1,total:2` (and equal search factor). The `origin:` constraint is what
    makes the naïve rename strand buckets; confirm the deployed policy and that
@@ -413,10 +418,9 @@ with **zero** ticks losing a `host`.
   shutdown method and maintenance mode are separable, and maintenance mode is the
   dominant cause of outage — `splunk offline` without maintenance mode is the only
   combination that approaches zero, and it scales from one to two peers per site.**
-  (These last runs were measured on a lab cluster that had been relabelled in place
-  several times rather than rebuilt clean; the residual sub-5-second transient may
-  be an artefact of that non-pristine state — the one-peer-per-site run 4 measured
-  exactly zero.)
+  (These runs were measured on a lab cluster relabelled in place several times. A
+  control run later rebuilt the cluster from scratch and re-ran the no-maintenance-
+  mode method on a pristine baseline — see the dedicated note two bullets down.)
 - A final run made the maintenance-mode cost unmistakable by holding it on for the
   **entire** rename (enable once at the start, both sites relabelled under it, a
   single disable at the very end). With two peers per site this is the **worst**
@@ -433,6 +437,20 @@ with **zero** ticks losing a `host`.
   per-site toggle < continuous. The only combination that approaches zero is
   `splunk offline` with **no maintenance mode at all** (§2.2), and it holds from one
   to two peers per site.
+- **Control run on a clean rebuild (correction).** To check whether the small
+  residual outage of the no-maintenance-mode two-peers-per-site runs was an artefact
+  of the in-place relabelling, the cluster was **rebuilt from scratch** (all index
+  and cluster state wiped, fresh baseline) and the method re-run. Two findings: (1)
+  the **slow** factor reconvergence seen earlier *was* an artefact — the rebuilt
+  baseline reconverged in seconds; but (2) the **outage did not go to zero — it was
+  actually larger** (~26 s vs ~4 s), confined to the post-restart re-homing fixup
+  (the renamed site's second peer briefly loses its searchable primary). So the
+  residual is **inherent and stochastic**, not a baseline artefact: with **two
+  peers per site this method does not reach a strict zero** — expect a few seconds
+  to a couple dozen seconds of per-host gap during re-homing. The strict-zero result
+  belongs to the **one-peer-per-site** topology (run 4). The shutdown windows
+  themselves stay clean throughout; the gap is a transient fixup, not a hard outage.
+  This refines reservation §6.3.
 
 **Independent audit.** Run 4 was re-verified by an independent reviewer who
 re-derived the result from the raw probe log (0/406 ticks lost a `host` →
