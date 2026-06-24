@@ -393,11 +393,20 @@ persistent fixup, and the continuity probe reported zero interruption.
 This method was not assumed — it was derived from a controlled lab experiment.
 The record below is what justifies the procedure above.
 
-**Test bed.** A minimal multisite cluster: 1 cluster manager + 2 indexer peers
-(**one peer per site**) + 1 search head, Splunk 9.x, `site_replication_factor =
-site_search_factor = origin:1,total:2`, search head on `site0`. Goal: rename the
-two indexer sites (`<old1>,<old2>` → `<new1>,<new2>`) with **zero search
-interruption** and RF/SF re-met at the end.
+**Test bed.** A minimal multisite cluster: 1 cluster manager + 1 search head on
+`site0`, Splunk 9.x. The campaign ran on **two topologies** to separate the
+peers-per-site variable:
+
+- **Series A — one peer per site** (2 indexers, `site_replication_factor =
+  site_search_factor = origin:1,total:2`). This is where the method was first
+  derived and where it reaches a **strict zero outage** (run 4).
+- **Series B — two peers per site** (4 indexers, `origin:2,total:3`), a
+  deliberately harder topology that, when both same-site peers go down together,
+  removes a site's intra-site redundancy. Used to test whether the method scales
+  and to probe the residual fixup gap.
+
+Goal in both: rename the two indexer sites (`<old1>,<old2>` → `<new1>,<new2>`)
+with **zero search interruption** and RF/SF re-met at the end.
 
 **Continuity probe.** A script polled the search head every 2 s for the whole
 window, grouping `index=_internal` **by data-source `host`** (the two peers as
@@ -408,15 +417,38 @@ a **`host` disappearing** from results, i.e. that peer's data no longer served b
 a cross-site copy. The probe logged per-tick availability; a run "passes" only
 with **zero** ticks losing a `host`.
 
-**Runs.**
+**Runs.** The continuity probe reports per-tick availability (2 s cadence); an
+"outage" is a tick where an expected **`host` disappears** from results. Figures
+below are availability % and the count of lost ticks / wall-clock gap.
+
+**Series A — one peer per site** (`origin:1,total:2`):
 
 | # | Method tried | Search continuity | RF/SF after | Acceptable? |
 |---|---|---|---|---|
-| 1 | plain `systemctl restart`, maintenance mode on, **hot** buckets | FAIL — multi-second outages during each peer restart | not met | no |
-| 2A | prolonged peer stop, maintenance mode on, **warm** buckets | FAIL — ~6 s gap at primary reassignment | not met | no |
-| 2B | **`splunk offline`**, maintenance mode off, warm | **PASS — 0 outage** | not met | no |
-| 3 | `splunk offline` + "wait for RF/SF met after each step" gate | FAIL — outage on one peer; **gate timed out** | not met (structural) | no |
-| 4 | **`splunk offline` + `site_mappings`** | **PASS — 0 outage** | **MET** | **yes** |
+| 1 | plain `systemctl restart`, maintenance mode on, **hot** buckets | FAIL — ~95.4%, 3 multi-second outages (~14 s + ~6 s + ~40 s) | not met | no |
+| 2A | prolonged peer stop, maintenance mode on, **warm** buckets | FAIL — ~98.5%, ~6 s gap at primary reassignment | not met | no |
+| 2B | **`splunk offline`**, maintenance mode off, warm | **PASS — 100%, 0 outage** | not met | no |
+| 3 | `splunk offline` + "wait for RF/SF met after each step" gate | FAIL — ~93.3%, ~40 s; **gate timed out** | not met (structural) | no |
+| 4 | **`splunk offline` + `site_mappings`** | **PASS — 100%, 0/406 ticks lost** | **MET** | **yes (strict zero)** |
+| 5 | `site_mappings` set up front, old sites still in `available_sites` | N/A — config **rejected**, manager crash-loops | — | no (invalid config) |
+| 6 | `available_sites = targets only` + `site_mappings`, peers **not** renamed | FAIL — peers ejected at heartbeat (69 lost ticks) | — | no (peers rejected) |
+| 7 | run 4 method **with maintenance mode on** | FAIL — ~36 s (or `offline` hit its ~5 min force-timeout) | met after MM disabled | no |
+| 8 | **`splunk stop`** (hard) + maintenance mode toggled per peer | FAIL — ~54 s (~24–30 s/peer) | met (~10 min) | no |
+
+**Series B — two peers per site** (`origin:2,total:3`; both same-site peers taken
+down together each time — the adversarial choice):
+
+| # | Method tried | Search continuity | RF/SF after | Acceptable? |
+|---|---|---|---|---|
+| 10 | **`splunk stop`** (hard) + maintenance mode "sandwich" (per-site) | FAIL — 98.79%, 11 ticks / ~22 s | met | no — `stop` strands same-site copies |
+| 11 | **`splunk offline`** + maintenance mode "sandwich" (per-site) | FAIL — 96.57%, 13 ticks / ~26 s, **all after MM disable** | met | no — MM defers the fixup |
+| 12 | **`splunk offline`, no maintenance mode** (= run 4 generalised) | **~PASS — 99.35%, 2 ticks / ~4 s** (re-homing transient) | met | near — best of series B |
+| 13 | `splunk offline` + maintenance mode **continuous** (whole rename) | FAIL — 79.05%, 84 ticks / ~165 s | met | no — **worst run**, MM held throughout |
+| 14 | run 12 re-run on a **clean rebuild** (control) | FAIL strict — 95.40%, 12 ticks / ~26 s (inherent re-homing residue) | met | no strict zero, but the method of choice |
+
+> An intervening attempt (between runs 8 and 10) produced no usable continuity
+> measurement and is omitted. Series B figures are availability over the full
+> rename window; "ticks" are 2 s probe samples that lost a `host`.
 
 **What each run established.**
 
@@ -435,11 +467,11 @@ with **zero** ticks losing a `host`.
   and achieved **both** zero outage **and** full RF/SF reconvergence (immediate
   for the first peer, ~1 minute for the second), with no wipe and no data loss
   (`All data is searchable` throughout).
-- A 5th run tried a "cleaner" ordering — set `site_mappings` **up front**, with
+- Run 5 tried a "cleaner" ordering — set `site_mappings` **up front**, with
   the old sites still in `available_sites` — and it is **structurally rejected**:
   the manager refuses the config (`Available site cannot be present in
   From-relation of tuple in site_mappings`) and crash-loops.
-- A 6th run removed the old sites up front instead — `available_sites = <targets
+- Run 6 removed the old sites up front instead — `available_sites = <targets
   only>` **plus** `site_mappings` — testing whether the mapping alone could pull
   the still-old-labelled peers in **without renaming them**. The config is
   **accepted** (the constraint above is lifted), but the **peers are rejected at
@@ -449,7 +481,7 @@ with **zero** ticks losing a `host`.
   `available_sites` until the peers are renamed.
 - Together, runs 4/5/6 show the ordering of §2.2 is the **unique** valid sequence,
   forced by the three constraints listed in the §2.2 box.
-- A 7th run repeated the validated method (run 4) but **with maintenance mode
+- Run 7 repeated the validated method (run 4) but **with maintenance mode
   enabled** throughout — the "standard" reconfiguration practice. It **fails**: the
   renamed peer's data drops out of search during the change (~36 s window in one
   clean run; in another the peer's `splunk offline` hit its ~5-minute decommission
@@ -458,7 +490,7 @@ with **zero** ticks losing a `host`.
   reassignment**. RF/SF do reconverge once maintenance mode is disabled, but the
   search gap during the change makes it strictly worse than run 4 (0 outage, no
   maintenance mode). → **do not use maintenance mode for this rename** (§2.2).
-- An 8th run replaced `splunk offline` with a plain `splunk stop` (hard stop) —
+- Run 8 replaced `splunk offline` with a plain `splunk stop` (hard stop) —
   toggling maintenance mode off between the two peers to let the manager settle.
   It **fails too** (~54 s of outage, ~24–30 s per peer): a hard stop drops the
   peer **without** the manager reassigning its primaries first, so its data is
@@ -466,11 +498,11 @@ with **zero** ticks losing a `host`.
   This is the converse confirmation of run 4: **the graceful `splunk offline` —
   which reassigns primaries before the peer stops — is the single feature that
   makes the rename zero-outage. `splunk stop`/`systemctl stop` must not be used.**
-- A 9th run tested whether **two peers per site** rescues the hard-stop approach:
-  same `splunk stop` + maintenance-mode method, but on a topology with two peers
-  in each site (`origin:2,total:3`), processing one site at a time and stopping
-  **both** of that site's peers together while the manager was reconfigured. It
-  **still fails** (~22 s of outage, both same-site peers absent from search
+- **Run 10** tested whether **two peers per site** rescues the hard-stop approach
+  (start of series B): same `splunk stop` + maintenance-mode method, but on a
+  topology with two peers in each site (`origin:2,total:3`), processing one site at
+  a time and stopping **both** of that site's peers together while the manager was
+  reconfigured. It **still fails** (98.79%, ~22 s of outage, both same-site peers absent from search
   together during each stop/restart window). Intra-site redundancy does **not**
   help here: a hard stop of *both* peers of a site removes that site's only
   searchable copies of any bucket whose other copy had not yet been promoted
@@ -479,27 +511,28 @@ with **zero** ticks losing a `host`.
   reinforces the §6.3 reservation: more peers per site only helps if you move
   them **one at a time with `splunk offline`**, never by hard-stopping a whole
   site at once.
-- Two further runs isolated the **two variables independently** on the two-peers-
+- **Runs 11 and 12** isolated the **two variables independently** on the two-peers-
   per-site topology, taking *both* peers of a site down **together** each time (a
-  deliberately adversarial choice). With `splunk offline` **and** maintenance mode
-  on: the shutdown windows are now **clean** (offline reassigns the primaries to
-  the surviving site before stopping, so even both-peers-down loses nothing), but
-  an outage of comparable size reappears **right after maintenance mode is
-  disabled** — the fixup that maintenance mode had suspended runs late and a host's
-  searchable copy is briefly missing. Same root cause as the 7th run. Dropping
-  maintenance mode entirely (same `splunk offline`, no maintenance mode) collapses
-  the outage to a brief transient (a couple of probe ticks during the post-restart
-  re-homing fixup, on one phase only). **Conclusion across the whole series: the
+  deliberately adversarial choice). **Run 11** — with `splunk offline` **and**
+  maintenance mode on: the shutdown windows are now **clean** (offline reassigns the
+  primaries to the surviving site before stopping, so even both-peers-down loses
+  nothing), but an outage of comparable size reappears **right after maintenance
+  mode is disabled** (96.57%, ~26 s, all post-disable) — the fixup that maintenance
+  mode had suspended runs late and a host's searchable copy is briefly missing. Same
+  root cause as run 7. **Run 12** — dropping maintenance mode entirely (same `splunk
+  offline`, no maintenance mode) collapses the outage to a brief transient (99.35%,
+  2 probe ticks / ~4 s during the post-restart re-homing fixup, on one phase only).
+  **Conclusion across the whole series: the
   shutdown method and maintenance mode are separable, and maintenance mode is the
   dominant cause of outage — `splunk offline` without maintenance mode is the only
   combination that approaches zero, and it scales from one to two peers per site.**
   (These runs were measured on a lab cluster relabelled in place several times. A
   control run later rebuilt the cluster from scratch and re-ran the no-maintenance-
   mode method on a pristine baseline — see the dedicated note two bullets down.)
-- A final run made the maintenance-mode cost unmistakable by holding it on for the
+- **Run 13** made the maintenance-mode cost unmistakable by holding it on for the
   **entire** rename (enable once at the start, both sites relabelled under it, a
   single disable at the very end). With two peers per site this is the **worst**
-  result of the whole series by a wide margin (~165 s of outage, vs ~4 s with no
+  result of the whole series by a wide margin (79.05%, ~165 s of outage, vs ~4 s with no
   maintenance mode and ~26 s with it toggled per-site). Two effects compound: (1)
   while both peers of the *second* site are down under maintenance mode, the
   manager will not promote the surviving cross-site replica to a searchable
@@ -512,13 +545,13 @@ with **zero** ticks losing a `host`.
   per-site toggle < continuous. The only combination that approaches zero is
   `splunk offline` with **no maintenance mode at all** (§2.2), and it holds from one
   to two peers per site.
-- **Control run on a clean rebuild (correction).** To check whether the small
-  residual outage of the no-maintenance-mode two-peers-per-site runs was an artefact
+- **Run 14 — control run on a clean rebuild (correction).** To check whether the small
+  residual outage of the no-maintenance-mode two-peers-per-site runs (run 12) was an artefact
   of the in-place relabelling, the cluster was **rebuilt from scratch** (all index
   and cluster state wiped, fresh baseline) and the method re-run. Two findings: (1)
   the **slow** factor reconvergence seen earlier *was* an artefact — the rebuilt
   baseline reconverged in seconds; but (2) the **outage did not go to zero — it was
-  actually larger** (~26 s vs ~4 s), confined to the post-restart re-homing fixup
+  actually larger** (95.40%, ~26 s vs ~4 s), confined to the post-restart re-homing fixup
   (the renamed site's second peer briefly loses its searchable primary). So the
   residual is **inherent and stochastic**, not a baseline artefact: with **two
   peers per site this method does not reach a strict zero** — expect a few seconds
