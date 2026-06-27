@@ -641,7 +641,7 @@ Trois commandes se chevauchent historiquement sur « annuler / restaurer ».
 
 Bonne nouvelle : **merge, rebase, cherry-pick, revert et `stash pop` gèrent les
 conflits exactement de la même façon.** Git met l'opération en pause, écrit les
-marqueurs `<<<<<<<` / `=======` / `>>>>>>>` dans les fichiers, et attend :
+marqueurs `<<<<<<<` / ======== / `>>>>>>>` dans les fichiers, et attend :
 
 ```bash
 # 1. éditer chaque fichier en conflit (supprimer les marqueurs, garder le bon contenu)
