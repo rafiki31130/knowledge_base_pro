@@ -668,3 +668,118 @@ surgir :
 
 > `git status` rappelle toujours, pendant un conflit, les fichiers à résoudre et la
 > commande de continuation exacte. En cas de doute : `--abort` et on recommence.
+
+## Réduire la taille du dépôt / tronquer l'historique
+
+> ⚠️ **Toutes les méthodes « définitives » ci-dessous réécrivent l'historique** :
+> les hash changent, il faut **force-push**, et **tous les clones/forks existants
+> deviennent incompatibles** (chacun doit re-cloner). À ne JAMAIS faire à la légère
+> sur un dépôt partagé sans prévenir. Et si on purge un secret : il reste dans les
+> clones et caches de la forge → **rotation du secret obligatoire** (cf.
+> [CONTRIBUTING](../CONTRIBUTING.md)).
+
+### D'abord : comprendre ce qui pèse
+
+Réduire le **nombre de commits** ne réduit pas forcément la taille : un gros
+fichier (« gros blob ») committé une fois **vit dans l'historique** tant qu'un
+commit le référence. Mesurer avant d'agir :
+
+```bash
+git count-objects -vH              # taille du dépôt (size-pack = poids réel)
+
+# Top des plus gros blobs de TOUT l'historique :
+git rev-list --objects --all |
+  git cat-file --batch-check='%(objecttype) %(objectname) %(objectsize) %(rest)' |
+  awk '/^blob/ {print $3, $4}' | sort -rn | head -20
+```
+
+Deux problèmes distincts → deux remèdes :
+
+- **Trop de commits / historique trop long** → tronquer (ne garder que les X derniers).
+- **De gros fichiers dans le passé** → les retirer de tout l'historique (filter-repo / BFG).
+
+### A. Clone superficiel — alléger SANS réécrire (le plus sûr)
+
+Ne récupère qu'une partie de l'historique en local. Le dépôt distant garde tout :
+**non destructif, réversible, n'impacte personne.** Idéal pour un CI ou un poste.
+
+```bash
+git clone --depth 1 <url>          # seulement le dernier commit
+git clone --depth 50 <url>         # les 50 derniers
+git fetch --depth 1                # tronquer un clone déjà présent
+git fetch --unshallow              # revenir à l'historique complet
+```
+
+> Limite : ça n'allège **que ce clone**. Ça ne réduit pas le dépôt côté serveur.
+
+### B. Ne garder que les X derniers commits (troncature définitive)
+
+Remplace tout ce qui précède `HEAD~X` par **un seul commit de base**, en conservant
+intacts les X derniers commits.
+
+```bash
+# Garder les X derniers commits, écraser le reste en un commit "Base"
+git checkout --orphan base-temp HEAD~X     # branche neuve, sans parent, à l'état de HEAD~X
+git commit -m "Base : historique tronqué"  # 1 commit qui contient tout l'état d'alors
+git rebase --onto base-temp HEAD~X main     # rejoue les X derniers par-dessus
+git branch -D base-temp
+# vérifier l'historique, puis publier :
+git push --force-with-lease origin main
+```
+
+Variante **table rase** (ne garder QUE l'état actuel, zéro historique) :
+
+```bash
+git checkout --orphan nouveau-depart       # branche sans historique
+git add -A
+git commit -m "Nouveau point de départ"
+git branch -D main
+git branch -m main                          # cette branche devient main
+git push --force origin main
+```
+
+### C. Retirer un gros fichier de TOUT l'historique
+
+C'est ce qui **réduit réellement** la taille quand le poids vient d'anciens blobs.
+Outil recommandé par le projet Git : **git-filter-repo** (à installer ; remplace
+l'ancien `git filter-branch`).
+
+```bash
+# Supprimer un fichier précis de tout l'historique
+git filter-repo --path chemin/gros-fichier.bin --invert-paths
+
+# Supprimer tous les blobs au-delà d'une taille
+git filter-repo --strip-blobs-bigger-than 10M
+```
+
+Alternative : **BFG Repo-Cleaner** (plus simple pour ce cas précis) :
+
+```bash
+bfg --delete-files gros-fichier.bin
+bfg --strip-blobs-bigger-than 10M
+```
+
+### D. Forcer la récupération de l'espace (après B ou C)
+
+La réécriture laisse les anciens objets « inaccessibles » mais encore stockés tant
+que le `gc` n'est pas passé. Pour récupérer la place **immédiatement** :
+
+```bash
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+```
+
+> Côté **forge** (GitHub/GitLab/Bitbucket), les anciens objets peuvent persister
+> dans des refs cachées (PR, `refs/pull/...`) et un cache serveur. Après un
+> force-push d'historique purgé, il faut souvent **contacter le support** (ou
+> supprimer/recréer le dépôt) pour que la taille baisse réellement côté serveur.
+
+### Récapitulatif : quelle méthode pour quel besoin
+
+| Besoin | Méthode | Réécrit l'historique ? |
+|---|---|---|
+| Alléger un clone local / un CI | **A.** `clone --depth` | Non (sûr) |
+| Ne garder que les X derniers commits | **B.** orphan + `rebase --onto` | Oui (force-push) |
+| Repartir de zéro (aucun historique) | **B.** orphan « table rase » | Oui (force-push) |
+| Le poids vient de gros fichiers passés | **C.** `git filter-repo` / BFG | Oui (force-push) |
+| Récupérer l'espace après B ou C | **D.** `reflog expire` + `gc --prune=now` | — |
