@@ -27,3 +27,4 @@ de configuration spécifique à un environnement.
 - [ITSI + Federated Search](./itsi-federated-search.md)
 - [Patrons de CI/CD pour déploiement Splunk](./cicd-deployment-patterns.md)
 - [Déclencheurs de rolling restart : SHC & cluster d'indexers](./rolling-restart-triggers.md) — [EN](./EN/rolling-restart-triggers.md)
+- [`splunk.secret` en SHC : propagation à l'ajout de membre](./shc-splunk-secret-propagation.md) — [EN](./EN/shc-splunk-secret-propagation.md)
