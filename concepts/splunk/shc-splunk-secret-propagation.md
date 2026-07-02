@@ -1,4 +1,4 @@
-> 🇬🇧 English version: [EN/shc-splunk-secret-propagation.md](EN/shc-splunk-secret-propagation.md)
+> 🇬🇧 English version: [EN/shc-splunk-secret-propagation.md](r_knowledge_base_pro/concepts/EN/shc-splunk-secret-propagation.md)
 
 # `splunk.secret` dans un Search Head Cluster — propagation à l'ajout de membre
 

@@ -1,4 +1,4 @@
-> 🇫🇷 Version française : [../shc-splunk-secret-propagation.md](../shc-splunk-secret-propagation.md)
+> 🇫🇷 Version française : [../shc-splunk-secret-propagation.md](r_knowledge_base_pro/concepts/splunk/shc-splunk-secret-propagation.md)
 
 # `splunk.secret` in a Search Head Cluster — propagation on member add
 

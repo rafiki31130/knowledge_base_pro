@@ -136,8 +136,7 @@ tail -f $SPLUNK_HOME/var/log/splunk/splunkd.log
   `advertiseRestartRequired` côté membre ; IDXC : reloader de conf côté peer). Une même
   conf peut RELOAD sur un SHC et RESTART sur un cluster d'indexers. Table de vérité par
   conf, méthode pour la déterminer soi-même, et pièges (purge d'app, suppression d'index,
-  searchable rolling restart) : [Déclencheurs de rolling restart — SHC & cluster
-  d'indexers](../splunk/concepts/rolling-restart-triggers.md).
+  searchable rolling restart) : [](r_knowledge_base_pro/concepts/splunk/rolling-restart-triggers.md).
 
 ## Voir aussi
 
