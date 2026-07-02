@@ -266,5 +266,5 @@ redondance pour drainer).
   `btool`, pièges courants.
 - [Patrons de CI/CD pour déploiement Splunk](cicd-deployment-patterns.md) —
   pipeline de livraison de bundles.
-- [Cycle de vie d'un évènement](cycle-de-vie-evenement.md) — où jouent
+- [Cycle de vie d'un évènement](splunk-cycle-de-vie-evenement.md) — où jouent
   parsing index-time et search-time.

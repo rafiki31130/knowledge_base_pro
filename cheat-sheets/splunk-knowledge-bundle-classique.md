@@ -193,6 +193,6 @@ index=_internal sourcetype=splunkd component=DistributedBundleReplicationManager
   - [Chap. 03 — réplication classic / cascading / mounted](../handbooks/splunk-shc-knowledge-bundle/03-replication-vers-peers.md)
   - [Chap. 05 — arbre de diagnostic complet](../handbooks/splunk-shc-knowledge-bundle/05-troubleshooting-arbre-de-diag.md)
   - [Chap. 06 — boîte à outils CLI / REST / logs / SPL](../handbooks/splunk-shc-knowledge-bundle/06-investigations.md)
-- Concepts : [Deployment server](deployment-server.md) (à ne pas confondre — celui-ci pour forwarders, pas SHC)
+- Concepts : [Deployment server](splunk-deployment-server.md) (à ne pas confondre — celui-ci pour forwarders, pas SHC)
 - Fiche [Splunk administration / CLI](./splunk-admin.md) — `btool`, `_internal`, `splunkd.log`
 - Fiche [Secrets & SSH](./secrets-ssh.md) — `op read` pour ne pas écrire `-auth admin:<password>` en clair

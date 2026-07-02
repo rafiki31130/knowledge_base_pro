@@ -8,7 +8,7 @@ ou il s'applique trop tard pour avoir l'effet voulu.
 
 Cette fiche donne la vue d'ensemble. Pour le détail de **ce qui s'exécute sur
 un UF par rapport à un HF/indexer** pendant la parsing phase, voir
-[Parsing phase : ce qui s'exécute où](parsing-phase-uf-vs-hf.md) (ne pas le
+[Parsing phase : ce qui s'exécute où](splunk-parsing-phase-uf-vs-hf.md) (ne pas le
 recopier ici).
 
 ## Les quatre phases
@@ -69,7 +69,7 @@ Point critique : sur un Universal Forwarder nu, la parsing phase **ne s'exécute
 pas** — elle est reportée sur le HF ou l'indexer. C'est pourquoi poser
 `TIME_FORMAT` dans le `props.conf` d'un UF reste sans effet. Le détail exhaustif
 de la répartition UF/HF est dans la fiche dédiée :
-[Parsing phase : ce qui s'exécute où](parsing-phase-uf-vs-hf.md).
+[Parsing phase : ce qui s'exécute où](splunk-parsing-phase-uf-vs-hf.md).
 
 ### 3. Index phase — écrire et horodater l'arrivée
 
@@ -112,6 +112,6 @@ historique est mal parsée, soit on réindexe, soit on rattrape en search-time.
 
 ## Voir aussi
 
-- [Parsing phase : ce qui s'exécute où](parsing-phase-uf-vs-hf.md) — détail UF vs HF/indexer
+- [Parsing phase : ce qui s'exécute où](splunk-parsing-phase-uf-vs-hf.md) — détail UF vs HF/indexer
 - [`_time` vs `_indextime`](time-vs-indextime.md) — les deux horodatages à ne pas confondre
-- [Cycle de vie des buckets en multisite](buckets-multisite-lifecycle.md) — ce que devient la donnée après l'index phase
+- [Cycle de vie des buckets en multisite](splunk-buckets-multisite-lifecycle.md) — ce que devient la donnée après l'index phase

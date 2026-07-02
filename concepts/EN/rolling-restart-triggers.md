@@ -1,4 +1,4 @@
-> 🇫🇷 Version française : [rolling-restart-triggers.md](r_knowledge_base_pro/concepts/splunk/rolling-restart-triggers.md)
+> 🇫🇷 Version française : [rolling-restart-triggers.md](splunk-rolling-restart-triggers.md)
 
 # Rolling restart triggers — SHC & indexer cluster
 
@@ -263,5 +263,5 @@ exist at all — modulation there goes through `-searchable` /
   `btool`, common traps.
 - [CI/CD patterns for Splunk deployment](cicd-deployment-patterns.md) —
   bundle delivery pipeline.
-- [Event lifecycle](cycle-de-vie-evenement.md) — where index-time and
+- [Event lifecycle](splunk-cycle-de-vie-evenement.md) — where index-time and
   search-time parsing play their role.
