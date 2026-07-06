@@ -34,3 +34,4 @@ Chaque fiche suit la même structure :
 - [Claude Code & MCP](./claude-code-mcp.md) — CLI `claude`, config `mcpServers` (stdio/http), debug MCP (`tools/list`).
 - [Stack média conteneurisée](./stack-media.md) — patterns conteneurs, `qbittorrent-nox`, API *arr (`X-Api-Key`), VPN gluetun (Docker → [docker.md](./docker.md)).
 - [Mermaid dans Obsidian](./mermaid-obsidian.md) — diagrammes en texte : flowchart/sequence/state/ER, liens internes, thème, portabilité GitHub/Forgejo.
+- [n8n](./n8n.md) — automatisation de workflows : expressions `{{ }}`, nœuds clés, webhooks, déploiement Docker self-hosted, CLI (`export/import/execute`), debug par executions.

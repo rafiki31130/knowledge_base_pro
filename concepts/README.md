@@ -24,3 +24,4 @@ Chaque fiche reste générique et publiable.
 - [Encodages à reconnaître et décoder : base64, URL, hex](./encodages-courants.md)
 - [Identités dans les logs : SID, UPN, sAMAccountName, notions OIDC](./identites-dans-les-logs.md)
 - [Git : modèle mental, vocabulaire et principes (HEAD, tree, worktree, prune…)](./git-modele-mental.md)
+- [n8n : modèle mental (workflow, nœuds, items, expressions, credentials, executions)](./n8n-modele-mental.md)
