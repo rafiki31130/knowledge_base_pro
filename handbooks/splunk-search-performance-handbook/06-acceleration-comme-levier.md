@@ -80,7 +80,7 @@ Six leviers. Chacun suit le format à quatre points.
   `| tstats summariesonly=t … FROM datamodel=<dm>` plutôt que de rejouer un `stats`
   sur le raw. C'est le chemin le plus rapide quand la couverture existe.
 - **Effet temporel attendu** — la matérialisation rawdata disparaît : le résumé
-  tsidx est lu directement. In 9.x, le gain à la recherche est d'ordres de grandeur
+  tsidx est lu directement. En 9.x, le gain à la recherche est d'ordres de grandeur
   face à un `stats` qui décompresse chaque event (voir [Accelerate data models](https://docs.splunk.com/Documentation/Splunk/9.4/Knowledge/Acceleratedatamodels)).
 - **Comment le mesurer** — *Execution costs* comparés `stats` vs `tstats
   summariesonly=t` : `command.search.rawdata` passe de dominant à ~0, `scanCount`
