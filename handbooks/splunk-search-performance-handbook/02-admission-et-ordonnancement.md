@@ -71,6 +71,9 @@ instruments de cette phase sont donc ailleurs.
   (voir [About metrics.log](https://docs.splunk.com/Documentation/Splunk/9.4/Troubleshooting/Aboutmetricslog)).
 - **Composant `SearchAdmission`** (`index=_internal sourcetype=splunkd
   component=SearchAdmission`) : `wait_ms`, la latence d'admission WLM (p50/p99).
+  *Marqueur observé dans `_internal` en 9.x, sans page de documentation Splunk
+  dédiée : confirmez sa présence sur votre instance avant d'en faire une
+  référence normative (posture de citation du handbook).*
 - **`_audit action=search`** : `workload_pool` (pool effectif), et les actions
   `workload_queue` / `workload_filter` ; un `quota_exceeded` y apparaît comme un
   échec, jamais comme une durée.
