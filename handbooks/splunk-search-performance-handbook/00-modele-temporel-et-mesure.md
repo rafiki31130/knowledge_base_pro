@@ -106,7 +106,7 @@ Job Inspector 9.4) :
 
 | Propriété | Signification |
 | --- | --- |
-| `scanCount` | events lus sur disque ([Splexicon:Scancount](https://docs.splunk.com/Splexicon:Scancount)) |
+| `scanCount` | events lus sur disque (voir [About jobs and job management](https://docs.splunk.com/Documentation/Splunk/9.4/Search/Aboutjobsandjobmanagement)) |
 | `eventCount` | events retenus après filtre |
 | `resultCount` | lignes finales produites |
 | `elapsedTime` | wallclock total du job |
@@ -291,7 +291,5 @@ locale). Ouvrir le chapitre 04 (`site_search_factor`, searchable copies).
 - [Splunk Distributed Search Manual 9.4 — About distributed search](https://docs.splunk.com/Documentation/Splunk/9.4/DistSearch/Aboutdistributedsearch)
 - [Splunk Troubleshooting Manual 9.4 — About metrics.log](https://docs.splunk.com/Documentation/Splunk/9.4/Troubleshooting/Aboutmetricslog)
 - [Splunk Troubleshooting Manual 9.4 — What Splunk software logs about itself](https://docs.splunk.com/Documentation/Splunk/9.4/Troubleshooting/WhatSplunklogsaboutitself)
-- [Splexicon — dispatch directory](https://docs.splunk.com/Splexicon:Dispatchdirectory)
-- [Splexicon — scan count](https://docs.splunk.com/Splexicon:Scancount)
-- [Splexicon — map](https://docs.splunk.com/Splexicon:Map)
-- [Splexicon — reduce](https://docs.splunk.com/Splexicon:Reduce)
+- [Splunk Search Manual 9.4 — Dispatch directory and search artifacts](https://docs.splunk.com/Documentation/Splunk/9.4/Search/Dispatchdirectoryandsearchartifacts)
+- [Splunk Capacity Planning Manual 9.4 — How search works (map / reduce)](https://docs.splunk.com/Documentation/Splunk/9.4/Capacity/Howsearchworks)
