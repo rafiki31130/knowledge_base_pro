@@ -316,6 +316,45 @@ use_remote_proxy            = enabled
 > formulation « `disabled` has no effect » de la doc, écrite dans l'optique
 > additive `importRoles`.
 
+### Valeurs par défaut des paramètres, par rôle (référence 9.4.6)
+
+Synthèse des **paramètres scalaires** (quotas, limites, restrictions de données)
+livrés par le paquet, croisés avec chaque rôle built-in. Ne liste pas les
+capabilities (additives — cf. §1) mais les attributs à **valeur unique**.
+
+**Lecture des cellules** :
+
+- Valeur **nue** (`10`) = **déclarée en propre** dans la stanza du rôle.
+- Valeur *entre parenthèses* (*(3)*) = **non déclarée** par le rôle → **héritée
+  du plancher `[default]`** (§2). C'est la valeur réellement en vigueur.
+- `—` = attribut **non applicable / non posé** (aucune valeur, pas même héritée).
+
+| Paramètre | `[default]` (plancher) | `user` | `power` | `admin` | `can_delete` |
+|---|---|---|---|---|---|
+| `srchJobsQuota` | `3` | *(3)* | `10` | `50` | *(3)* |
+| `rtSrchJobsQuota` | `6` | *(6)* | `20` | `100` | *(6)* |
+| `srchDiskQuota` | `100` | *(100)* | `500` | `10000` | *(100)* |
+| `cumulativeSrchJobsQuota` | `50` | *(50)* | `100` | `200` | `0` |
+| `cumulativeRTSrchJobsQuota` | `100` | *(100)* | `200` | `400` | `0` |
+| `srchIndexesAllowed` | — | `*` | `*` | `*;_*` | — |
+| `srchIndexesDefault` | — | `main` | `main` | `main;os` | — |
+| `srchFilter` | — | — | — | `*` | — |
+| `srchTimeWin` | — | — | — | `0` | — |
+| `srchTimeEarliest` | — | — | — | `0` | — |
+| `srchFilterSelecting` | `true` | *(true)* | *(true)* | *(true)* | *(true)* |
+| `srchMaxTime` | `100days` | *(100days)* | *(100days)* | *(100days)* | *(100days)* |
+| `deleteIndexesAllowed` | — | — | — | — | `*` |
+
+- Colonnes omises : **`splunk-system-role`** ne déclare **aucun** scalaire (tout
+  vient de l'import `admin`, cf. §1) et **`splunk_system_upgrader`** n'en déclare
+  aucun non plus → il retombe intégralement sur la colonne `[default]`.
+- Rappel §3 : les **quotas** ne s'héritent pas de façon *enforceable* via
+  `importRoles`. Ce tableau donne la **valeur livrée** de chaque rôle, pas la
+  résultante d'un multi-rôles (là, `max()` gagne sur les quotas non-cumulatifs).
+- `srchFilterSelecting` et `srchMaxTime` ne vivent **que** dans le `[default]` :
+  aucun rôle built-in ne les redéclare, donc tous les rôles portent la valeur du
+  plancher.
+
 ---
 
 ## 2. La stanza `[default]` d'`authorize.conf`
