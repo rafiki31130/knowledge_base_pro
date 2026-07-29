@@ -316,6 +316,236 @@ use_remote_proxy            = enabled
 > formulation « `disabled` has no effect » de la doc, écrite dans l'optique
 > additive `importRoles`.
 
+### Valeurs par défaut des paramètres, par rôle (référence 9.4.6)
+
+Synthèse des **paramètres scalaires** (quotas, limites, restrictions de données)
+livrés par le paquet, croisés avec chaque rôle built-in. Ne liste pas les
+capabilities (additives — cf. §1) mais les attributs à **valeur unique**.
+
+**Lecture des cellules** :
+
+- Valeur **nue** (`10`) = **déclarée en propre** dans la stanza du rôle.
+- Valeur *entre parenthèses* (*(3)*) = **non déclarée** par le rôle → **héritée
+  du plancher `[default]`** (§2). C'est la valeur réellement en vigueur.
+- `—` = attribut **non applicable / non posé** (aucune valeur, pas même héritée).
+
+| Paramètre | `[default]` (plancher) | `user` | `power` | `admin` | `can_delete` |
+|---|---|---|---|---|---|
+| `srchJobsQuota` | `3` | *(3)* | `10` | `50` | *(3)* |
+| `rtSrchJobsQuota` | `6` | *(6)* | `20` | `100` | *(6)* |
+| `srchDiskQuota` | `100` | *(100)* | `500` | `10000` | *(100)* |
+| `cumulativeSrchJobsQuota` | `50` | *(50)* | `100` | `200` | `0` |
+| `cumulativeRTSrchJobsQuota` | `100` | *(100)* | `200` | `400` | `0` |
+| `srchIndexesAllowed` | — | `*` | `*` | `*;_*` | — |
+| `srchIndexesDefault` | — | `main` | `main` | `main;os` | — |
+| `srchFilter` | — | — | — | `*` | — |
+| `srchTimeWin` | — | — | — | `0` | — |
+| `srchTimeEarliest` | — | — | — | `0` | — |
+| `srchFilterSelecting` | `true` | *(true)* | *(true)* | *(true)* | *(true)* |
+| `srchMaxTime` | `100days` | *(100days)* | *(100days)* | *(100days)* | *(100days)* |
+| `deleteIndexesAllowed` | — | — | — | — | `*` |
+
+- Colonnes omises : **`splunk-system-role`** ne déclare **aucun** scalaire (tout
+  vient de l'import `admin`, cf. §1) et **`splunk_system_upgrader`** n'en déclare
+  aucun non plus → il retombe intégralement sur la colonne `[default]`.
+- Rappel §3 : les **quotas** ne s'héritent pas de façon *enforceable* via
+  `importRoles`. Ce tableau donne la **valeur livrée** de chaque rôle, pas la
+  résultante d'un multi-rôles (là, `max()` gagne sur les quotas non-cumulatifs).
+- `srchFilterSelecting` et `srchMaxTime` ne vivent **que** dans le `[default]` :
+  aucun rôle built-in ne les redéclare, donc tous les rôles portent la valeur du
+  plancher.
+
+### Matrice des capabilities par rôle (effectif, référence 9.4.6)
+
+Toutes les capabilities livrées par le paquet (`system/default`), croisées avec
+chaque rôle built-in. Complète le tableau des scalaires ci-dessus : ici, la
+« valeur par défaut » d'une capability est binaire — **activée** (`enabled`) ou
+absente.
+
+**Lecture des cellules** :
+
+- **✓** = capability **effective** (activée) par défaut pour ce rôle, que ce soit
+  par **déclaration propre** ou par **héritage** (`importRoles` et/ou plancher
+  `[default]`). Pour le détail déclaré-vs-hérité, se reporter aux **stanzas
+  complètes** (§1).
+- **(vide)** = capability absente pour ce rôle.
+- **(app)** = accordée par une **couche d'app** hors `system/default` (cf. note
+  §1), pas par le paquet de base.
+
+Rappels de composition (§1) : `power` hérite de `user`, `admin` hérite de
+`power;user` (donc `admin` porte **quasiment toutes** les capabilities), et
+`splunk-system-role` = `admin` via import → **colonne omise, identique à
+`admin`**. Les cinq premières lignes sont les capabilities du **plancher
+`[default]`** (§2), présentes dans **tous** les rôles.
+
+| Capability | `[default]` | `user` | `power` | `admin` | `can_delete` | `sys_upgr` |
+|---|:--:|:--:|:--:|:--:|:--:|:--:|
+| `run_collect` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `run_mcollect` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `edit_own_objects` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `list_all_objects` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `schedule_rtsearch` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `change_own_password` |  | ✓ | ✓ | ✓ |  |  |
+| `edit_search_schedule_window` |  | ✓ | ✓ | ✓ |  |  |
+| `get_metadata` |  | ✓ | ✓ | ✓ |  |  |
+| `get_typeahead` |  | ✓ | ✓ | ✓ |  |  |
+| `input_file` |  | ✓ | ✓ | ✓ |  |  |
+| `list_inputs` |  | ✓ | ✓ | ✓ |  |  |
+| `output_file` |  | ✓ | ✓ | ✓ |  |  |
+| `upload_lookup_files` |  | ✓ | ✓ | ✓ |  |  |
+| `request_remote_tok` |  | ✓ | ✓ | ✓ |  |  |
+| `rest_apps_view` |  | ✓ | ✓ | ✓ |  |  |
+| `rest_properties_get` |  | ✓ | ✓ | ✓ |  |  |
+| `rest_properties_set` |  | ✓ | ✓ | ✓ |  |  |
+| `search` |  | ✓ | ✓ | ✓ |  |  |
+| `accelerate_search` |  | ✓ | ✓ | ✓ |  |  |
+| `list_accelerate_search` |  | ✓ | ✓ | ✓ |  |  |
+| `pattern_detect` |  | ✓ | ✓ | ✓ |  |  |
+| `list_metrics_catalog` |  | ✓ | ✓ | ✓ |  |  |
+| `list_tokens_own` |  | ✓ | ✓ | ✓ |  |  |
+| `export_results_is_visible` |  | ✓ | ✓ | ✓ |  |  |
+| `run_dump` |  | ✓ | ✓ | ✓ |  |  |
+| `run_sendalert` |  | ✓ | ✓ | ✓ |  |  |
+| `run_custom_command` |  | ✓ | ✓ | ✓ |  |  |
+| `rest_access_server_endpoints` |  | ✓ | ✓ | ✓ |  |  |
+| `edit_messages` |  |  | ✓ | ✓ |  |  |
+| `schedule_search` |  |  | ✓ | ✓ |  |  |
+| `metric_alerts` |  |  | ✓ | ✓ |  |  |
+| `embed_report` |  |  | ✓ | ✓ |  |  |
+| `edit_dispatch_as` |  |  | ✓ | ✓ |  |  |
+| `rtsearch` |  |  | ✓ | ✓ |  |  |
+| `edit_sourcetypes` |  |  | ✓ | ✓ |  |  |
+| `edit_statsd_transforms` |  |  | ✓ | ✓ |  |  |
+| `search_process_config_refresh` |  |  | ✓ | ✓ |  |  |
+| `edit_log_alert_event` |  |  | ✓ | ✓ |  |  |
+| `run_msearch` |  |  | ✓ | ✓ |  |  |
+| `list_field_filter` |  |  | ✓ | ✓ |  |  |
+| `run_commands_ignoring_field_filter` |  |  | ✓ | ✓ |  |  |
+| `accelerate_datamodel` |  |  |  | ✓ |  |  |
+| `admin_all_objects` |  |  |  | ✓ |  |  |
+| `edit_tokens_settings` |  |  |  | ✓ |  |  |
+| `change_authentication` |  |  |  | ✓ |  |  |
+| `change_audit` |  |  |  | ✓ |  |  |
+| `edit_bookmarks_mc` |  |  |  | ✓ |  |  |
+| `create_external_lookup` |  |  |  | ✓ |  |  |
+| `edit_external_lookup` |  |  |  | ✓ |  |  |
+| `edit_deployment_client` |  |  |  | ✓ |  |  |
+| `list_deployment_client` |  |  |  | ✓ |  |  |
+| `edit_deployment_server` |  |  |  | ✓ |  |  |
+| `list_deployment_server` |  |  |  | ✓ |  |  |
+| `dispatch_rest_to_indexers` |  |  |  | ✓ |  |  |
+| `edit_authentication_extensions` |  |  |  | ✓ |  |  |
+| `edit_cmd` |  |  |  | ✓ |  |  |
+| `edit_upload_and_index` |  |  |  | ✓ |  |  |
+| `edit_tcp_stream` |  |  |  | ✓ |  |  |
+| `list_dist_peer` |  |  |  | ✓ |  |  |
+| `edit_dist_peer` |  |  |  | ✓ |  |  |
+| `edit_field_filter` |  |  |  | ✓ |  |  |
+| `edit_restmap` |  |  |  | ✓ |  |  |
+| `edit_forwarders` |  |  |  | ✓ |  |  |
+| `edit_indexerdiscovery` |  |  |  | ✓ |  |  |
+| `edit_httpauths` |  |  |  | ✓ |  |  |
+| `edit_input_defaults` |  |  |  | ✓ |  |  |
+| `list_introspection` |  |  |  | ✓ |  |  |
+| `edit_local_apps` |  |  |  | ✓ |  |  |
+| `edit_monitor` |  |  |  | ✓ |  |  |
+| `edit_tokens_own` |  |  |  | ✓ |  |  |
+| `edit_roles` |  |  |  | ✓ |  |  |
+| `edit_scripted` |  |  |  | ✓ |  |  |
+| `edit_search_concurrency_all` |  |  |  | ✓ |  |  |
+| `edit_search_head_clustering` |  |  |  | ✓ |  |  |
+| `edit_search_server` |  |  |  | ✓ |  |  |
+| `edit_search_scheduler` |  |  |  | ✓ |  |  |
+| `edit_search_schedule_priority` |  |  |  | ✓ |  |  |
+| `edit_tokens_all` |  |  |  | ✓ |  |  |
+| `list_tokens_all` |  |  |  | ✓ |  |  |
+| `edit_certificates` |  |  |  | ✓ |  |  |
+| `list_certificates` |  |  |  | ✓ |  |  |
+| `edit_spl2_permissions` |  |  |  | ✓ |  |  |
+| `list_pipeline_sets` |  |  |  | ✓ |  |  |
+| `list_search_scheduler` |  |  |  | ✓ |  |  |
+| `edit_server` |  |  |  | ✓ |  |  |
+| `edit_user_seed` |  |  |  | ✓ |  |  |
+| `edit_splunktcp` |  |  |  | ✓ |  |  |
+| `edit_splunktcp_ssl` |  |  |  | ✓ |  |  |
+| `edit_splunktcp_token` |  |  |  | ✓ |  |  |
+| `edit_tcp` |  |  |  | ✓ |  |  |
+| `edit_udp` |  |  |  | ✓ |  |  |
+| `edit_telemetry_settings` |  |  |  | ✓ |  |  |
+| `edit_user` |  |  |  | ✓ |  |  |
+| `edit_view_html` |  |  |  | ✓ |  |  |
+| `edit_web_settings` |  |  |  | ✓ |  |  |
+| `get_diag` |  |  |  | ✓ |  |  |
+| `indexes_edit` |  |  |  | ✓ |  |  |
+| `install_apps` |  |  |  | ✓ |  |  |
+| `license_edit` |  |  |  | ✓ |  |  |
+| `license_tab` |  |  |  | ✓ |  |  |
+| `license_view_warnings` |  |  |  | ✓ |  |  |
+| `refresh_application_licenses` |  |  |  | ✓ |  |  |
+| `list_forwarders` |  |  |  | ✓ |  |  |
+| `list_indexerdiscovery` |  |  |  | ✓ |  |  |
+| `list_httpauths` |  |  |  | ✓ |  |  |
+| `rest_apps_management` |  |  |  | ✓ |  |  |
+| `restart_splunkd` |  |  |  | ✓ |  |  |
+| `restart_reason` |  |  |  | ✓ |  |  |
+| `run_debug_commands` |  |  |  | ✓ |  |  |
+| `list_token_http` |  |  |  | ✓ |  |  |
+| `edit_token_http` |  |  |  | ✓ |  |  |
+| `web_debug` |  |  |  | ✓ |  |  |
+| `edit_server_crl` |  |  |  | ✓ |  |  |
+| `edit_storage_passwords` |  |  |  | ✓ |  |  |
+| `list_storage_passwords` |  |  |  | ✓ |  |  |
+| `edit_encryption_key_provider` |  |  |  | ✓ |  |  |
+| `never_lockout` |  |  |  | ✓ |  |  |
+| `never_expire` |  |  |  | ✓ |  |  |
+| `list_health` |  |  |  | ✓ |  |  |
+| `edit_health` |  |  |  | ✓ |  |  |
+| `apps_restore` |  |  |  | ✓ |  |  |
+| `apps_backup` |  |  |  | ✓ |  |  |
+| `fsh_manage` |  |  |  | ✓ |  |  |
+| `fsh_search` |  |  |  | ✓ |  |  |
+| `edit_workload_pools` |  |  |  | ✓ |  |  |
+| `list_workload_pools` |  |  |  | ✓ |  |  |
+| `select_workload_pools` |  |  |  | ✓ |  |  |
+| `edit_workload_rules` |  |  |  | ✓ |  |  |
+| `list_workload_rules` |  |  |  | ✓ |  |  |
+| `list_workload_policy` |  |  |  | ✓ |  |  |
+| `edit_workload_policy` |  |  |  | ✓ |  |  |
+| `edit_metric_schema` |  |  |  | ✓ |  |  |
+| `edit_metrics_rollup` |  |  |  | ✓ |  |  |
+| `list_cascading_plans` |  |  |  | ✓ |  |  |
+| `list_remote_output_queue` |  |  |  | ✓ |  |  |
+| `list_remote_input_queue` |  |  |  | ✓ |  |  |
+| `list_ingest_rulesets` |  |  |  | ✓ |  |  |
+| `edit_ingest_rulesets` |  |  |  | ✓ |  |  |
+| `capture_ingest_events` |  |  |  | ✓ |  |  |
+| `edit_global_banner` |  |  |  | ✓ |  |  |
+| `edit_web_features` |  |  |  | ✓ |  |  |
+| `edit_kvstore` |  |  |  | ✓ |  |  |
+| `upload_mmdb_files` |  |  |  | ✓ |  |  |
+| `edit_manager_xml` |  |  |  | ✓ |  |  |
+| `merge_buckets` |  |  |  | ✓ |  |  |
+| `edit_indexer_cluster` |  |  |  | ✓ |  | ✓ |
+| `list_indexer_cluster` |  |  |  | ✓ |  | ✓ |
+| `list_search_head_clustering` |  |  |  | ✓ |  | ✓ |
+| `list_settings` |  |  |  | ✓ |  | ✓ |
+| `use_remote_proxy` |  |  |  | ✓ |  | ✓ |
+| `upgrade_splunk_idxc` |  |  |  | ✓ (app) |  | ✓ |
+| `upgrade_splunk_shc` |  |  |  | ✓ (app) |  | ✓ |
+| `delete_by_keyword` |  |  |  |  | ✓ |  |
+
+- **`admin` porte tout** sauf `delete_by_keyword` (fourni par le rôle
+  **`can_delete`**, jamais importé par `admin`) — c'est pourquoi la commande SPL
+  `delete` exige d'assigner `can_delete` **en plus**.
+- Les cinq lignes `edit_indexer_cluster` → `use_remote_proxy` sont déclarées **à
+  la fois** dans `admin` et dans `splunk_system_upgrader` ; `upgrade_splunk_idxc`
+  / `upgrade_splunk_shc` n'existent que dans `splunk_system_upgrader` côté paquet
+  (et arrivent dans `admin` **via l'app** `splunk-rolling-upgrade`, cf. §1).
+- Décompte cohérent avec §1 : `user` = **28 effectives** (5 plancher + 23
+  propres), `power` en ajoute, `admin` = **113 propres** + héritées, `can_delete`
+  = **6** (5 plancher + `delete_by_keyword`), `splunk_system_upgrader` = **12**
+  (5 plancher + 7 propres).
+
 ---
 
 ## 2. La stanza `[default]` d'`authorize.conf`
