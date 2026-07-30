@@ -362,189 +362,200 @@ chaque rôle built-in. Complète le tableau des scalaires ci-dessus : ici, la
 « valeur par défaut » d'une capability est binaire — **activée** (`enabled`) ou
 absente.
 
-**Lecture des cellules** :
+**Lecture des cellules** — l'**origine** de chaque capability est explicite :
 
-- **✓** = capability **effective** (activée) par défaut pour ce rôle, que ce soit
-  par **déclaration propre** ou par **héritage** (`importRoles` et/ou plancher
-  `[default]`). Pour le détail déclaré-vs-hérité, se reporter aux **stanzas
-  complètes** (§1).
-- **(vide)** = capability absente pour ce rôle.
-- **(app)** = accordée par une **couche d'app** hors `system/default` (cf. note
-  §1), pas par le paquet de base.
+- **●** = **propre** : la capability est **déclarée dans la stanza du rôle**
+  (`<cap> = enabled`) — c'est une **source directe**.
+- **○** = **héritée** : le rôle la **porte** sans la déclarer — elle remonte par
+  `importRoles` (chaîne `user → power → admin`) et/ou par le plancher `[default]`.
+- **(vide)** = capability **absente** pour ce rôle.
+- **(app)** = déclarée en propre par une **couche d'app** hors `system/default`
+  (cf. note §1), pas par le paquet de base.
+
+Exemple : `get_metadata` est **●** (propre) **uniquement** pour `user` ; `power`
+et `admin` la portent en **○** (héritée via `importRoles`) — ils ne la déclarent
+pas eux-mêmes. À l'inverse `edit_messages` est **●** pour `power` **et** `admin`
+(les deux la déclarent en propre).
 
 Rappels de composition (§1) : `power` hérite de `user`, `admin` hérite de
-`power;user` (donc `admin` porte **quasiment toutes** les capabilities), et
-`splunk-system-role` = `admin` via import → **colonne omise, identique à
-`admin`**. Les cinq premières lignes sont les capabilities du **plancher
-`[default]`** (§2), présentes dans **tous** les rôles.
+`power;user`, et `splunk-system-role` = `admin` via import → **colonne omise,
+identique à `admin` mais tout en ○** (rien en propre). Les cinq premières lignes
+sont les capabilities du **plancher `[default]`** (§2), portées par **tous** les
+rôles (en ○, sauf redéclaration).
 
 | Capability | `[default]` | `user` | `power` | `admin` | `can_delete` | `sys_upgr` |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|
-| `run_collect` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `run_mcollect` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `edit_own_objects` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `list_all_objects` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `schedule_rtsearch` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| `change_own_password` |  | ✓ | ✓ | ✓ |  |  |
-| `edit_search_schedule_window` |  | ✓ | ✓ | ✓ |  |  |
-| `get_metadata` |  | ✓ | ✓ | ✓ |  |  |
-| `get_typeahead` |  | ✓ | ✓ | ✓ |  |  |
-| `input_file` |  | ✓ | ✓ | ✓ |  |  |
-| `list_inputs` |  | ✓ | ✓ | ✓ |  |  |
-| `output_file` |  | ✓ | ✓ | ✓ |  |  |
-| `upload_lookup_files` |  | ✓ | ✓ | ✓ |  |  |
-| `request_remote_tok` |  | ✓ | ✓ | ✓ |  |  |
-| `rest_apps_view` |  | ✓ | ✓ | ✓ |  |  |
-| `rest_properties_get` |  | ✓ | ✓ | ✓ |  |  |
-| `rest_properties_set` |  | ✓ | ✓ | ✓ |  |  |
-| `search` |  | ✓ | ✓ | ✓ |  |  |
-| `accelerate_search` |  | ✓ | ✓ | ✓ |  |  |
-| `list_accelerate_search` |  | ✓ | ✓ | ✓ |  |  |
-| `pattern_detect` |  | ✓ | ✓ | ✓ |  |  |
-| `list_metrics_catalog` |  | ✓ | ✓ | ✓ |  |  |
-| `list_tokens_own` |  | ✓ | ✓ | ✓ |  |  |
-| `export_results_is_visible` |  | ✓ | ✓ | ✓ |  |  |
-| `run_dump` |  | ✓ | ✓ | ✓ |  |  |
-| `run_sendalert` |  | ✓ | ✓ | ✓ |  |  |
-| `run_custom_command` |  | ✓ | ✓ | ✓ |  |  |
-| `rest_access_server_endpoints` |  | ✓ | ✓ | ✓ |  |  |
-| `edit_messages` |  |  | ✓ | ✓ |  |  |
-| `schedule_search` |  |  | ✓ | ✓ |  |  |
-| `metric_alerts` |  |  | ✓ | ✓ |  |  |
-| `embed_report` |  |  | ✓ | ✓ |  |  |
-| `edit_dispatch_as` |  |  | ✓ | ✓ |  |  |
-| `rtsearch` |  |  | ✓ | ✓ |  |  |
-| `edit_sourcetypes` |  |  | ✓ | ✓ |  |  |
-| `edit_statsd_transforms` |  |  | ✓ | ✓ |  |  |
-| `search_process_config_refresh` |  |  | ✓ | ✓ |  |  |
-| `edit_log_alert_event` |  |  | ✓ | ✓ |  |  |
-| `run_msearch` |  |  | ✓ | ✓ |  |  |
-| `list_field_filter` |  |  | ✓ | ✓ |  |  |
-| `run_commands_ignoring_field_filter` |  |  | ✓ | ✓ |  |  |
-| `accelerate_datamodel` |  |  |  | ✓ |  |  |
-| `admin_all_objects` |  |  |  | ✓ |  |  |
-| `edit_tokens_settings` |  |  |  | ✓ |  |  |
-| `change_authentication` |  |  |  | ✓ |  |  |
-| `change_audit` |  |  |  | ✓ |  |  |
-| `edit_bookmarks_mc` |  |  |  | ✓ |  |  |
-| `create_external_lookup` |  |  |  | ✓ |  |  |
-| `edit_external_lookup` |  |  |  | ✓ |  |  |
-| `edit_deployment_client` |  |  |  | ✓ |  |  |
-| `list_deployment_client` |  |  |  | ✓ |  |  |
-| `edit_deployment_server` |  |  |  | ✓ |  |  |
-| `list_deployment_server` |  |  |  | ✓ |  |  |
-| `dispatch_rest_to_indexers` |  |  |  | ✓ |  |  |
-| `edit_authentication_extensions` |  |  |  | ✓ |  |  |
-| `edit_cmd` |  |  |  | ✓ |  |  |
-| `edit_upload_and_index` |  |  |  | ✓ |  |  |
-| `edit_tcp_stream` |  |  |  | ✓ |  |  |
-| `list_dist_peer` |  |  |  | ✓ |  |  |
-| `edit_dist_peer` |  |  |  | ✓ |  |  |
-| `edit_field_filter` |  |  |  | ✓ |  |  |
-| `edit_restmap` |  |  |  | ✓ |  |  |
-| `edit_forwarders` |  |  |  | ✓ |  |  |
-| `edit_indexerdiscovery` |  |  |  | ✓ |  |  |
-| `edit_httpauths` |  |  |  | ✓ |  |  |
-| `edit_input_defaults` |  |  |  | ✓ |  |  |
-| `list_introspection` |  |  |  | ✓ |  |  |
-| `edit_local_apps` |  |  |  | ✓ |  |  |
-| `edit_monitor` |  |  |  | ✓ |  |  |
-| `edit_tokens_own` |  |  |  | ✓ |  |  |
-| `edit_roles` |  |  |  | ✓ |  |  |
-| `edit_scripted` |  |  |  | ✓ |  |  |
-| `edit_search_concurrency_all` |  |  |  | ✓ |  |  |
-| `edit_search_head_clustering` |  |  |  | ✓ |  |  |
-| `edit_search_server` |  |  |  | ✓ |  |  |
-| `edit_search_scheduler` |  |  |  | ✓ |  |  |
-| `edit_search_schedule_priority` |  |  |  | ✓ |  |  |
-| `edit_tokens_all` |  |  |  | ✓ |  |  |
-| `list_tokens_all` |  |  |  | ✓ |  |  |
-| `edit_certificates` |  |  |  | ✓ |  |  |
-| `list_certificates` |  |  |  | ✓ |  |  |
-| `edit_spl2_permissions` |  |  |  | ✓ |  |  |
-| `list_pipeline_sets` |  |  |  | ✓ |  |  |
-| `list_search_scheduler` |  |  |  | ✓ |  |  |
-| `edit_server` |  |  |  | ✓ |  |  |
-| `edit_user_seed` |  |  |  | ✓ |  |  |
-| `edit_splunktcp` |  |  |  | ✓ |  |  |
-| `edit_splunktcp_ssl` |  |  |  | ✓ |  |  |
-| `edit_splunktcp_token` |  |  |  | ✓ |  |  |
-| `edit_tcp` |  |  |  | ✓ |  |  |
-| `edit_udp` |  |  |  | ✓ |  |  |
-| `edit_telemetry_settings` |  |  |  | ✓ |  |  |
-| `edit_user` |  |  |  | ✓ |  |  |
-| `edit_view_html` |  |  |  | ✓ |  |  |
-| `edit_web_settings` |  |  |  | ✓ |  |  |
-| `get_diag` |  |  |  | ✓ |  |  |
-| `indexes_edit` |  |  |  | ✓ |  |  |
-| `install_apps` |  |  |  | ✓ |  |  |
-| `license_edit` |  |  |  | ✓ |  |  |
-| `license_tab` |  |  |  | ✓ |  |  |
-| `license_view_warnings` |  |  |  | ✓ |  |  |
-| `refresh_application_licenses` |  |  |  | ✓ |  |  |
-| `list_forwarders` |  |  |  | ✓ |  |  |
-| `list_indexerdiscovery` |  |  |  | ✓ |  |  |
-| `list_httpauths` |  |  |  | ✓ |  |  |
-| `rest_apps_management` |  |  |  | ✓ |  |  |
-| `restart_splunkd` |  |  |  | ✓ |  |  |
-| `restart_reason` |  |  |  | ✓ |  |  |
-| `run_debug_commands` |  |  |  | ✓ |  |  |
-| `list_token_http` |  |  |  | ✓ |  |  |
-| `edit_token_http` |  |  |  | ✓ |  |  |
-| `web_debug` |  |  |  | ✓ |  |  |
-| `edit_server_crl` |  |  |  | ✓ |  |  |
-| `edit_storage_passwords` |  |  |  | ✓ |  |  |
-| `list_storage_passwords` |  |  |  | ✓ |  |  |
-| `edit_encryption_key_provider` |  |  |  | ✓ |  |  |
-| `never_lockout` |  |  |  | ✓ |  |  |
-| `never_expire` |  |  |  | ✓ |  |  |
-| `list_health` |  |  |  | ✓ |  |  |
-| `edit_health` |  |  |  | ✓ |  |  |
-| `apps_restore` |  |  |  | ✓ |  |  |
-| `apps_backup` |  |  |  | ✓ |  |  |
-| `fsh_manage` |  |  |  | ✓ |  |  |
-| `fsh_search` |  |  |  | ✓ |  |  |
-| `edit_workload_pools` |  |  |  | ✓ |  |  |
-| `list_workload_pools` |  |  |  | ✓ |  |  |
-| `select_workload_pools` |  |  |  | ✓ |  |  |
-| `edit_workload_rules` |  |  |  | ✓ |  |  |
-| `list_workload_rules` |  |  |  | ✓ |  |  |
-| `list_workload_policy` |  |  |  | ✓ |  |  |
-| `edit_workload_policy` |  |  |  | ✓ |  |  |
-| `edit_metric_schema` |  |  |  | ✓ |  |  |
-| `edit_metrics_rollup` |  |  |  | ✓ |  |  |
-| `list_cascading_plans` |  |  |  | ✓ |  |  |
-| `list_remote_output_queue` |  |  |  | ✓ |  |  |
-| `list_remote_input_queue` |  |  |  | ✓ |  |  |
-| `list_ingest_rulesets` |  |  |  | ✓ |  |  |
-| `edit_ingest_rulesets` |  |  |  | ✓ |  |  |
-| `capture_ingest_events` |  |  |  | ✓ |  |  |
-| `edit_global_banner` |  |  |  | ✓ |  |  |
-| `edit_web_features` |  |  |  | ✓ |  |  |
-| `edit_kvstore` |  |  |  | ✓ |  |  |
-| `upload_mmdb_files` |  |  |  | ✓ |  |  |
-| `edit_manager_xml` |  |  |  | ✓ |  |  |
-| `merge_buckets` |  |  |  | ✓ |  |  |
-| `edit_indexer_cluster` |  |  |  | ✓ |  | ✓ |
-| `list_indexer_cluster` |  |  |  | ✓ |  | ✓ |
-| `list_search_head_clustering` |  |  |  | ✓ |  | ✓ |
-| `list_settings` |  |  |  | ✓ |  | ✓ |
-| `use_remote_proxy` |  |  |  | ✓ |  | ✓ |
-| `upgrade_splunk_idxc` |  |  |  | ✓ (app) |  | ✓ |
-| `upgrade_splunk_shc` |  |  |  | ✓ (app) |  | ✓ |
-| `delete_by_keyword` |  |  |  |  | ✓ |  |
+| `run_collect` | ● | ● | ○ | ○ | ○ | ○ |
+| `run_mcollect` | ● | ● | ○ | ○ | ○ | ○ |
+| `edit_own_objects` | ● | ○ | ○ | ○ | ○ | ○ |
+| `list_all_objects` | ● | ○ | ○ | ○ | ○ | ○ |
+| `schedule_rtsearch` | ● | ○ | ○ | ○ | ○ | ○ |
+| `change_own_password` |  | ● | ○ | ○ |  |  |
+| `edit_search_schedule_window` |  | ● | ○ | ○ |  |  |
+| `get_metadata` |  | ● | ○ | ○ |  |  |
+| `get_typeahead` |  | ● | ○ | ○ |  |  |
+| `input_file` |  | ● | ○ | ○ |  |  |
+| `list_inputs` |  | ● | ○ | ○ |  |  |
+| `output_file` |  | ● | ○ | ○ |  |  |
+| `upload_lookup_files` |  | ● | ○ | ○ |  |  |
+| `request_remote_tok` |  | ● | ○ | ○ |  |  |
+| `rest_apps_view` |  | ● | ○ | ○ |  |  |
+| `rest_properties_get` |  | ● | ○ | ○ |  |  |
+| `rest_properties_set` |  | ● | ○ | ○ |  |  |
+| `search` |  | ● | ○ | ○ |  |  |
+| `accelerate_search` |  | ● | ○ | ○ |  |  |
+| `list_accelerate_search` |  | ● | ○ | ○ |  |  |
+| `pattern_detect` |  | ● | ○ | ○ |  |  |
+| `list_metrics_catalog` |  | ● | ○ | ○ |  |  |
+| `list_tokens_own` |  | ● | ○ | ○ |  |  |
+| `export_results_is_visible` |  | ● | ○ | ○ |  |  |
+| `run_dump` |  | ● | ● | ○ |  |  |
+| `run_sendalert` |  | ● | ● | ○ |  |  |
+| `run_custom_command` |  | ● | ● | ○ |  |  |
+| `rest_access_server_endpoints` |  | ● | ● | ○ |  |  |
+| `edit_messages` |  |  | ● | ● |  |  |
+| `schedule_search` |  |  | ● | ○ |  |  |
+| `metric_alerts` |  |  | ● | ○ |  |  |
+| `embed_report` |  |  | ● | ○ |  |  |
+| `edit_dispatch_as` |  |  | ● | ○ |  |  |
+| `rtsearch` |  |  | ● | ○ |  |  |
+| `edit_sourcetypes` |  |  | ● | ○ |  |  |
+| `edit_statsd_transforms` |  |  | ● | ○ |  |  |
+| `search_process_config_refresh` |  |  | ● | ● |  |  |
+| `edit_log_alert_event` |  |  | ● | ● |  |  |
+| `run_msearch` |  |  | ● | ○ |  |  |
+| `list_field_filter` |  |  | ● | ● |  |  |
+| `run_commands_ignoring_field_filter` |  |  | ● | ○ |  |  |
+| `accelerate_datamodel` |  |  |  | ● |  |  |
+| `admin_all_objects` |  |  |  | ● |  |  |
+| `edit_tokens_settings` |  |  |  | ● |  |  |
+| `change_authentication` |  |  |  | ● |  |  |
+| `change_audit` |  |  |  | ● |  |  |
+| `edit_bookmarks_mc` |  |  |  | ● |  |  |
+| `create_external_lookup` |  |  |  | ● |  |  |
+| `edit_external_lookup` |  |  |  | ● |  |  |
+| `edit_deployment_client` |  |  |  | ● |  |  |
+| `list_deployment_client` |  |  |  | ● |  |  |
+| `edit_deployment_server` |  |  |  | ● |  |  |
+| `list_deployment_server` |  |  |  | ● |  |  |
+| `dispatch_rest_to_indexers` |  |  |  | ● |  |  |
+| `edit_authentication_extensions` |  |  |  | ● |  |  |
+| `edit_cmd` |  |  |  | ● |  |  |
+| `edit_upload_and_index` |  |  |  | ● |  |  |
+| `edit_tcp_stream` |  |  |  | ● |  |  |
+| `list_dist_peer` |  |  |  | ● |  |  |
+| `edit_dist_peer` |  |  |  | ● |  |  |
+| `edit_field_filter` |  |  |  | ● |  |  |
+| `edit_restmap` |  |  |  | ● |  |  |
+| `edit_forwarders` |  |  |  | ● |  |  |
+| `edit_indexerdiscovery` |  |  |  | ● |  |  |
+| `edit_httpauths` |  |  |  | ● |  |  |
+| `edit_input_defaults` |  |  |  | ● |  |  |
+| `list_introspection` |  |  |  | ● |  |  |
+| `edit_local_apps` |  |  |  | ● |  |  |
+| `edit_monitor` |  |  |  | ● |  |  |
+| `edit_tokens_own` |  |  |  | ● |  |  |
+| `edit_roles` |  |  |  | ● |  |  |
+| `edit_scripted` |  |  |  | ● |  |  |
+| `edit_search_concurrency_all` |  |  |  | ● |  |  |
+| `edit_search_head_clustering` |  |  |  | ● |  |  |
+| `edit_search_server` |  |  |  | ● |  |  |
+| `edit_search_scheduler` |  |  |  | ● |  |  |
+| `edit_search_schedule_priority` |  |  |  | ● |  |  |
+| `edit_tokens_all` |  |  |  | ● |  |  |
+| `list_tokens_all` |  |  |  | ● |  |  |
+| `edit_certificates` |  |  |  | ● |  |  |
+| `list_certificates` |  |  |  | ● |  |  |
+| `edit_spl2_permissions` |  |  |  | ● |  |  |
+| `list_pipeline_sets` |  |  |  | ● |  |  |
+| `list_search_scheduler` |  |  |  | ● |  |  |
+| `edit_server` |  |  |  | ● |  |  |
+| `edit_user_seed` |  |  |  | ● |  |  |
+| `edit_splunktcp` |  |  |  | ● |  |  |
+| `edit_splunktcp_ssl` |  |  |  | ● |  |  |
+| `edit_splunktcp_token` |  |  |  | ● |  |  |
+| `edit_tcp` |  |  |  | ● |  |  |
+| `edit_udp` |  |  |  | ● |  |  |
+| `edit_telemetry_settings` |  |  |  | ● |  |  |
+| `edit_user` |  |  |  | ● |  |  |
+| `edit_view_html` |  |  |  | ● |  |  |
+| `edit_web_settings` |  |  |  | ● |  |  |
+| `get_diag` |  |  |  | ● |  |  |
+| `indexes_edit` |  |  |  | ● |  |  |
+| `install_apps` |  |  |  | ● |  |  |
+| `license_edit` |  |  |  | ● |  |  |
+| `license_tab` |  |  |  | ● |  |  |
+| `license_view_warnings` |  |  |  | ● |  |  |
+| `refresh_application_licenses` |  |  |  | ● |  |  |
+| `list_forwarders` |  |  |  | ● |  |  |
+| `list_indexerdiscovery` |  |  |  | ● |  |  |
+| `list_httpauths` |  |  |  | ● |  |  |
+| `rest_apps_management` |  |  |  | ● |  |  |
+| `restart_splunkd` |  |  |  | ● |  |  |
+| `restart_reason` |  |  |  | ● |  |  |
+| `run_debug_commands` |  |  |  | ● |  |  |
+| `list_token_http` |  |  |  | ● |  |  |
+| `edit_token_http` |  |  |  | ● |  |  |
+| `web_debug` |  |  |  | ● |  |  |
+| `edit_server_crl` |  |  |  | ● |  |  |
+| `edit_storage_passwords` |  |  |  | ● |  |  |
+| `list_storage_passwords` |  |  |  | ● |  |  |
+| `edit_encryption_key_provider` |  |  |  | ● |  |  |
+| `never_lockout` |  |  |  | ● |  |  |
+| `never_expire` |  |  |  | ● |  |  |
+| `list_health` |  |  |  | ● |  |  |
+| `edit_health` |  |  |  | ● |  |  |
+| `apps_restore` |  |  |  | ● |  |  |
+| `apps_backup` |  |  |  | ● |  |  |
+| `fsh_manage` |  |  |  | ● |  |  |
+| `fsh_search` |  |  |  | ● |  |  |
+| `edit_workload_pools` |  |  |  | ● |  |  |
+| `list_workload_pools` |  |  |  | ● |  |  |
+| `select_workload_pools` |  |  |  | ● |  |  |
+| `edit_workload_rules` |  |  |  | ● |  |  |
+| `list_workload_rules` |  |  |  | ● |  |  |
+| `list_workload_policy` |  |  |  | ● |  |  |
+| `edit_workload_policy` |  |  |  | ● |  |  |
+| `edit_metric_schema` |  |  |  | ● |  |  |
+| `edit_metrics_rollup` |  |  |  | ● |  |  |
+| `list_cascading_plans` |  |  |  | ● |  |  |
+| `list_remote_output_queue` |  |  |  | ● |  |  |
+| `list_remote_input_queue` |  |  |  | ● |  |  |
+| `list_ingest_rulesets` |  |  |  | ● |  |  |
+| `edit_ingest_rulesets` |  |  |  | ● |  |  |
+| `capture_ingest_events` |  |  |  | ● |  |  |
+| `edit_global_banner` |  |  |  | ● |  |  |
+| `edit_web_features` |  |  |  | ● |  |  |
+| `edit_kvstore` |  |  |  | ● |  |  |
+| `upload_mmdb_files` |  |  |  | ● |  |  |
+| `edit_manager_xml` |  |  |  | ● |  |  |
+| `merge_buckets` |  |  |  | ● |  |  |
+| `edit_indexer_cluster` |  |  |  | ● |  | ● |
+| `list_indexer_cluster` |  |  |  | ● |  | ● |
+| `list_search_head_clustering` |  |  |  | ● |  | ● |
+| `list_settings` |  |  |  | ● |  | ● |
+| `use_remote_proxy` |  |  |  | ● |  | ● |
+| `upgrade_splunk_idxc` |  |  |  | ● (app) |  | ● |
+| `upgrade_splunk_shc` |  |  |  | ● (app) |  | ● |
+| `delete_by_keyword` |  |  |  |  | ● |  |
 
-- **`admin` porte tout** sauf `delete_by_keyword` (fourni par le rôle
-  **`can_delete`**, jamais importé par `admin`) — c'est pourquoi la commande SPL
-  `delete` exige d'assigner `can_delete` **en plus**.
-- Les cinq lignes `edit_indexer_cluster` → `use_remote_proxy` sont déclarées **à
-  la fois** dans `admin` et dans `splunk_system_upgrader` ; `upgrade_splunk_idxc`
-  / `upgrade_splunk_shc` n'existent que dans `splunk_system_upgrader` côté paquet
-  (et arrivent dans `admin` **via l'app** `splunk-rolling-upgrade`, cf. §1).
-- Décompte cohérent avec §1 : `user` = **28 effectives** (5 plancher + 23
-  propres), `power` en ajoute, `admin` = **113 propres** + héritées, `can_delete`
-  = **6** (5 plancher + `delete_by_keyword`), `splunk_system_upgrader` = **12**
-  (5 plancher + 7 propres).
+- **`admin` porte tout** sauf `delete_by_keyword` : ses **113 caps propres**
+  (**●**) plus tout ce qui remonte de `power;user` (**○**). `delete_by_keyword`
+  vient du rôle **`can_delete`**, jamais importé par `admin` — d'où la nécessité
+  d'assigner `can_delete` **en plus** pour la commande SPL `delete`.
+- Une capability peut être **● dans plusieurs colonnes** quand plusieurs rôles la
+  déclarent réellement : c'est le cas de `run_dump` / `run_sendalert` /
+  `run_custom_command` / `rest_access_server_endpoints` (**●** dans `user` **et**
+  `power`), et de `edit_messages` / `search_process_config_refresh` /
+  `edit_log_alert_event` / `list_field_filter` (**●** dans `power` **et**
+  `admin`). Le **○** ne s'emploie que là où le rôle ne la déclare pas.
+- Les cinq lignes `edit_indexer_cluster` → `use_remote_proxy` sont **●** à la fois
+  dans `admin` et `splunk_system_upgrader` (chacun les déclare). `upgrade_splunk_idxc`
+  / `upgrade_splunk_shc` sont **●** en propre dans `splunk_system_upgrader` et
+  arrivent dans `admin` **via l'app** `splunk-rolling-upgrade` → **● (app)**.
+- Décompte cohérent avec §1 (propres **●** + héritées **○**) : `user` = **28
+  effectives**, `admin` = **113 ●** + héritées, `can_delete` = **6**,
+  `splunk_system_upgrader` = **12**.
 
 ---
 
