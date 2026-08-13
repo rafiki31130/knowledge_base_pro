@@ -23,3 +23,4 @@ variantes → pièges.
 - [`stats` vs `eventstats` vs `streamstats`](stats-eventstats-streamstats.md)
 - [`tstats` et `summariesonly` : recherche accélérée](tstats-summariesonly.md)
 - [Multivalue en SPL : `mvexpand`, `mvfilter`, `mvcount`](multivalue-spl.md)
+- [Commandes personnalisées : une génératrice rend des résultats, pas des événements](commandes-custom-generatrices.md)
