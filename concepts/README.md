@@ -25,3 +25,4 @@ Chaque fiche reste générique et publiable.
 - [Identités dans les logs : SID, UPN, sAMAccountName, notions OIDC](./identites-dans-les-logs.md)
 - [Git : modèle mental, vocabulaire et principes (HEAD, tree, worktree, prune…)](./git-modele-mental.md)
 - [n8n : modèle mental (workflow, nœuds, items, expressions, credentials, executions)](./n8n-modele-mental.md)
+- [Comptes de service Splunk créés par fichiers de configuration, sans API](./splunk-comptes-de-service-par-fichiers.md)
