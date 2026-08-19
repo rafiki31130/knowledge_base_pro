@@ -29,6 +29,7 @@ Chaque fiche suit la même structure :
 - [Splunk (administration / CLI)](./splunk-admin.md) — CLI admin `splunk` : start/stop, `btool`, `search`, index, `_internal` (SPL → [splunk/](../splunk/README.md)).
 - [Splunk — knowledge bundle (réplication classique)](./splunk-knowledge-bundle-classique.md) — fiche réflexe incident : fondamentaux, pré-requis (snapshot + `confOp` SHC), points de contrôle par symptôme. Disponible aussi en anglais : [`EN/splunk-knowledge-bundle-classic.md`](./EN/splunk-knowledge-bundle-classic.md).
 - [Splunk RBAC (rôles & héritage)](./splunk-rbac.md) — `authorize.conf` : rôles built-in, stanza `[default]` (plancher), héritage par type de droit, retrait d'une capability via `<cap> = disabled` (précédence de conf), `POST`=SET destructif, cascade `DELETE`.
+- [Splunk — nettoyer une configuration locale](./splunk-nettoyage-config-locale.md) — purge vs suppression, prédicteur `removable` + lien `remove`, ce qui purge par REST (4 familles sur 11) et ce qui n'en purge aucune, ACL non retirables, alternative « éditer + `_reload` », huit pièges dont le `DELETE` non idempotent.
 - [NetBox (API REST)](./netbox-api.md) — API `curl` (`dcim`, `ipam`), filtres/pagination, client `pynetbox`.
 - [Home Assistant (CLI & API)](./home-assistant.md) — CLI `ha`, `check_config`, API REST `/api/states` & `/api/services`, reload YAML.
 - [Claude Code & MCP](./claude-code-mcp.md) — CLI `claude`, config `mcpServers` (stdio/http), debug MCP (`tools/list`).
