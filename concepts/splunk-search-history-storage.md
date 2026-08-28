@@ -230,36 +230,36 @@ stateDiagram-v2
 
     [*] --> CSV
 
-    CSV: Mode csv (defaut)
+    CSV: Mode csv (défaut)
     CSV: 1 fichier par (utilisateur, application)
-    CSV: plafond 500 par couple, pas de retention par age
+    CSV: plafond 500 par couple, pas de rétention par âge
 
-    CSV --> RELOAD: ecriture de search_history_storage_mode = kvstore
+    CSV --> RELOAD: écriture de search_history_storage_mode = kvstore
     RELOAD: FAUX POSITIF
-    RELOAD: reload HTTP 200 + btool affiche deja kvstore
-    RELOAD: le moteur ecrit toujours dans les CSV
-    RELOAD --> CSV: aucun effet reel
+    RELOAD: reload HTTP 200 + btool affiche déjà kvstore
+    RELOAD: le moteur écrit toujours dans les CSV
+    RELOAD --> CSV: aucun effet réel
 
-    CSV --> MIGRATION: redemarrage de splunkd, parametre deja ecrit a kvstore
+    CSV --> MIGRATION: redémarrage de splunkd, paramètre déjà écrit à kvstore
     MIGRATION: Migration unique (SearchHistoryMigrate)
     MIGRATION: ne parcourt que les utilisateurs authentifiables
-    MIGRATION: NON-RETOUR 1 - les CSV sont supprimes
+    MIGRATION: NON-RETOUR 1 - les CSV sont supprimés
     MIGRATION: NON-RETOUR 2 - marqueur global .sh_migrated
 
     MIGRATION --> KV
 
     KV: Mode kvstore
     KV: pool unique par utilisateur, cloisonnement par app perdu
-    KV: document a 4 cles, sans champ d application
+    KV: document à 4 clés, sans champ d'application
 
-    KV --> VIERGE: retour a csv + redemarrage
+    KV --> VIERGE: retour à csv + redémarrage
     VIERGE: Mode csv, historique VIDE
-    VIERGE: documents conserves dans le KV Store mais inaccessibles
-    VIERGE: CSV supprimes non restitues
+    VIERGE: documents conservés dans le KV Store mais inaccessibles
+    VIERGE: CSV supprimés non restitués
 
-    VIERGE --> KV2: retour a kvstore + redemarrage
-    KV2: Marqueur present, aucune remigration
-    KV2: les entrees produites dans l intermede csv restent orphelines
+    VIERGE --> KV2: retour à kvstore + redémarrage
+    KV2: Marqueur présent, aucune remigration
+    KV2: les entrées produites dans l'intermède csv restent orphelines
     KV2 --> [*]
 ```
 
