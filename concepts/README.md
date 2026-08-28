@@ -26,3 +26,6 @@ Chaque fiche reste générique et publiable.
 - [Git : modèle mental, vocabulaire et principes (HEAD, tree, worktree, prune…)](./git-modele-mental.md)
 - [n8n : modèle mental (workflow, nœuds, items, expressions, credentials, executions)](./n8n-modele-mental.md)
 - [Comptes de service Splunk créés par fichiers de configuration, sans API](./splunk-comptes-de-service-par-fichiers.md)
+- [`btool` est une vue normalisée, pas un écho des fichiers source](./splunk-btool-vue-normalisee.md)
+- [Commande de recherche *chunked* : le décorateur ne dit pas ce que splunkd reçoit](./splunk-commande-chunked-metadonnees.md)
+- [Diagnostiquer une commande de recherche custom : ni le code de retour ni le message ne sont fiables](./splunk-commande-custom-diagnostic-cli.md)
