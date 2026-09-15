@@ -1,0 +1,13 @@
+---
+name: nom-du-skill
+description: "Quand <situation déclenchante> ou « <formulation typique> » — produit <résultat>."
+---
+
+# Nom du skill
+
+1. <Action> — terminé quand <critère vérifiable>.
+2. <Action> — terminé quand <critère vérifiable>.
+
+## Référence
+
+<Uniquement ce qu'une étape consulte ; le détail long va dans references/.>
