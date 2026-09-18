@@ -1,0 +1,13 @@
+# Miroirs de documentation aspirée (cf. scripts/splunk-help-to-md/).
+# JAMAIS versionnés : documentation éditeur sous copyright, et ce dépôt est public.
+# Seules les notes dérivées (synthèses, tableaux de correspondance) ont leur place ici.
+doc-mirror/
+*-mirror/
+**/.cache/
+**/_assets/
+
+# Python
+__pycache__/
+*.py[co]
+.venv/
+venv/
