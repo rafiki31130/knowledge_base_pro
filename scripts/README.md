@@ -22,3 +22,10 @@ Chaque script vit dans **son propre sous-dossier** avec :
   Applique des transformations regex sur des fichiers ciblés, dans les repos d'un projet
   Bitbucket Server/DC filtrés par regex. Modes Audit (dry-run avec diff) et Execute
   (commit + push + PR). Auth via le gestionnaire d'identifiants de l'OS.
+
+- [Portail de doc HTML → Markdown](./splunk-help-to-md/README.md) — Python. Aspire un manuel
+  d'un portail de documentation (structure type `help.splunk.com`) vers une arborescence
+  Markdown : un fichier par page, liens internes réécrits en relatif, blocs de code annotés,
+  index généré. Détection automatique du conteneur de contenu, rendu navigateur si le portail
+  est une SPA, cache local pour reconvertir sans retélécharger. `robots.txt` respecté.
+  **La sortie ne se commite pas ici** (doc éditeur sous copyright, dépôt public).
