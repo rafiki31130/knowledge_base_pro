@@ -1,20 +1,21 @@
-# Le bouton « Add Data » : quelles capabilities, et pourquoi il n'existe pas en SHC
+# Le bouton « Add Data » : quelles capabilities, et pourquoi il est masqué en SHC
 
 Quelles capabilities faut-il accorder à un rôle pour qu'un utilisateur voie le
-bouton **Add Data** dans Splunk Web ? La réponse tient en deux conditions
-cumulatives, dont **une seule dépend des capabilities**. L'autre dépend de la
-topologie : sur un **membre de Search Head Cluster**, la page n'est pas servie,
-et aucun jeu de capabilities ne fait apparaître le bouton.
+bouton **Add Data** dans Splunk Web ? La réponse tient en **trois** conditions
+cumulatives, dont une seule porte sur les capabilities d'entrée de données. Sur
+un **membre de Search Head Cluster**, la page de gestion est masquée par défaut :
+le bouton n'apparaît pour personne tant que **Settings > Show All Settings** n'a
+pas été activé sur cette instance, et cet état n'est ni répliqué aux autres
+membres, ni accessible à un rôle ordinaire.
 
 > Observations relevées sur **Splunk Enterprise 9.4.6** (Linux), sur un banc
-> comportant des instances membres de SHC et des instances hors SHC. Les
-> expressions citées sont **lues dans le produit installé**, pas dans la
-> documentation vendeur. La méthode du §6 permet de re-vérifier sur sa propre
-> version.
+> comportant des membres de SHC et des instances hors SHC. Les expressions
+> citées sont **lues dans le produit installé**, pas dans la documentation
+> vendeur. La méthode du §7 permet de re-vérifier sur sa propre version.
 
 ---
 
-## 1. Deux conditions, pas une
+## 1. Trois conditions, pas une
 
 Le rendu du bouton, dans le modèle utilisateur de Splunk Web
 (`share/splunk/search_mrsparkle/exposed/build/modules_nav/*/index.js`), s'écrit :
@@ -26,12 +27,18 @@ userCanAddData = this.model.user.canAddData()
 
 Deux facteurs, évalués côté navigateur, mais dont le second est **rempli par le
 serveur** : `collection.managers` est la liste servie par
-`/servicesNS/nobody/<app>/data/ui/manager`, elle-même filtrée par splunkd.
+`/servicesNS/nobody/<app>/data/ui/manager`, filtrée par splunkd selon
+l'utilisateur **et** selon la topologie. D'où la troisième condition, propre au
+SHC : l'état « Show All Settings » de l'instance.
 
 ```mermaid
 flowchart TD
-  A["Chargement de la barre de navigation<br/>ou de la page d'accueil"] --> B{"L'entree 'adddata' est-elle<br/>dans /data/ui/manager<br/>pour CET utilisateur ?"}
-  B -- non --> X["AUCUN bouton Add Data"]
+  A["Chargement de la barre de navigation<br/>ou de la page d'accueil"] --> T{"Instance membre de SHC ?"}
+  T -- non --> B
+  T -- oui --> S{"'Show All Settings'<br/>active sur CETTE instance ?"}
+  S -- non --> X["AUCUN bouton Add Data,<br/>quelles que soient les capabilities"]
+  S -- oui --> B{"L'entree 'adddata' est-elle servie<br/>a CET utilisateur par<br/>/data/ui/manager ?"}
+  B -- non --> X
   B -- oui --> C{"canAddData() cote navigateur<br/>(capabilities de l'utilisateur)"}
   C -- "false" --> X
   C -- "true" --> D["Bouton Add Data affiche"]
@@ -39,8 +46,8 @@ flowchart TD
 ```
 
 La conséquence pratique est qu'un diagnostic « il manque une capability » est
-faux une fois sur deux : il faut d'abord vérifier que l'entrée existe pour cet
-utilisateur, ensuite seulement discuter des droits.
+souvent faux : il faut d'abord vérifier que l'entrée existe pour cet
+utilisateur, sur cette instance, ensuite seulement discuter des droits.
 
 ---
 
@@ -64,12 +71,13 @@ Il est déclaré dans la définition de la page de gestion,
 </endpoint>
 ```
 
-Deux choses s'y lisent, et la seconde est la plus importante :
+Deux choses s'y lisent :
 
 - l'expression `<read>` : **une seule** de ces capabilities suffit, sauf pour le
   couple `edit_upload_and_index AND edit_tcp_stream` qui ne vaut que groupé ;
-- `showOnSearchHeadCluster="0"` : l'entrée est **retirée sur un membre de SHC**,
-  indépendamment de l'utilisateur et de ses droits.
+- `showOnSearchHeadCluster="0"` : l'entrée est **masquée par défaut sur un
+  membre de SHC**, pour tout le monde, `admin` compris. Masquée, pas supprimée :
+  voir §5.
 
 ---
 
@@ -102,13 +110,15 @@ aussi l'affichage de ces trois tuiles. Déduction du nommage, non mesurée ici.
 
 ---
 
-## 4. Matrice mesurée (instance hors SHC)
+## 4. Matrice mesurée
 
 Protocole : un rôle par ligne, **une seule capability** (aucun rôle hérité), un
 utilisateur jetable par rôle, puis lecture de
 `/servicesNS/nobody/search/data/ui/manager` **avec les identifiants de cet
 utilisateur**. La colonne « entrées » est le nombre total d'entrées de gestion
 visibles par ce rôle, bon indicateur de la surface d'administration ouverte.
+Résultats identiques sur une instance hors SHC et sur un membre de SHC dont
+« Show All Settings » est actif.
 
 | Capability unique du rôle | Entrées de gestion | `adddata` servie | Bouton attendu |
 |---|---|---|---|
@@ -122,7 +132,8 @@ visibles par ce rôle, bon indicateur de la surface d'administration ouverte.
 | `edit_upload_and_index` | 59 | non | non |
 | `edit_tcp_stream` | 59 | non | non |
 | `edit_upload_and_index` + `edit_tcp_stream` | 61 | **oui** | **oui** |
-| `admin_all_objects` | 67 | **oui** | **non** (§3, écart navigateur) |
+| `admin_all_objects` | 62 à 67 selon la topologie | **oui** | **non** (§3, écart navigateur) |
+| `edit_manager_xml` | 59 | non | non |
 | capability d'un modular input hors liste | 59 | non | non |
 | `edit_forwarders` | 59 | non | non |
 | `list_inputs` | 59 | non | non |
@@ -150,38 +161,87 @@ couple `edit_upload_and_index` + `edit_tcp_stream`.
 
 ---
 
-## 5. Sur un membre de SHC : le bouton n'existe pour personne
+## 5. Sur un membre de SHC : masqué par défaut, révélé par « Show All Settings »
 
-Mesuré avec un compte disposant de **toutes** les capabilities, sur la même
-version et le même banc :
+Le `showOnSearchHeadCluster="0"` du §2 **masque** les pages de gestion
+concernées, il ne les supprime pas. Le bascule est l'entrée **Show All
+Settings** du menu Settings, et elle se lit dans le même bundle :
 
-| Instance | Entrées de `/data/ui/manager` | `adddata` / `adddatamethods` |
-|---|---|---|
-| membre de SHC (captain) | 93 | **absentes** |
-| instance hors SHC (rôle manager de cluster) | 124 | présentes |
-| instance hors SHC (rôle deployer) | 124 | présentes |
+```js
+canShowMore() => !!this.links.get("_show")        // lien servi par le REST
+showMore()    => POST data/ui/manager/_show
+// item de menu : { label: "Show All Settings", action: "show-all",
+//                  enabled: user.hasCapability("edit_manager_xml") }
+```
 
-L'écart de 31 entrées est le lot des pages de gestion marquées
-`showOnSearchHeadCluster="0"` : configurées par bundle, elles n'ont pas de sens
-à l'unité sur un membre.
+Le REST le rend visible : sur un membre de SHC, la collection
+`/data/ui/manager` porte un lien **`_show`** que l'instance hors SHC n'a pas.
+Un `POST` sur ce lien bascule l'état, et le lien devient `_hide`.
 
-Et l'URL directe de la page ne rattrape pas l'absence du bouton : sur le membre
-de SHC, `GET /<locale>/manager/<app>/adddata` répond **HTTP 200** avec la page
-**« Page not available »**, tandis que la même URL sur une instance hors SHC
-rend bien l'assistant. Le code de retour ne distingue donc pas les deux cas :
-c'est le **contenu** qu'il faut regarder, piège classique du diagnostic par
-`curl -o /dev/null -w '%{http_code}'`.
+Mesures, compte disposant de toutes les capabilities :
 
-> **Lecture opérationnelle.** Si l'utilisateur final travaille sur un SHC, la
-> demande « donner Add Data à tel rôle » n'a pas de solution par les
-> capabilities. Les issues sont ailleurs : déclarer les entrées par bundle
-> depuis le deployer, passer par un Deployment Server pour les forwarders, ou
-> exposer une instance de saisie hors cluster. Le refuser tôt évite une
-> campagne de tests de droits qui ne peut pas aboutir.
+- membre de SHC, état par défaut : **93** entrées, `adddata` et `adddatamethods`
+  **absentes**, lien `_show` présent ;
+- **le même membre après `POST .../_show` : 125 entrées, `adddata` présente**,
+  lien `_hide` ;
+- instance hors SHC : **124** entrées, `adddata` présente, aucun lien `_show`.
+
+L'URL directe de la page suit exactement cet état : sur un membre de SHC au
+repos, `GET /<locale>/manager/<app>/adddata` répond **HTTP 200** avec la page
+**« Page not available »** ; après la bascule, la même URL rend l'assistant. Le
+code de retour ne distingue pas les deux cas, c'est le **contenu** qu'il faut
+regarder : piège classique du diagnostic par `curl -o /dev/null -w '%{http_code}'`.
+
+### Portée de la bascule, mesurée
+
+- **Elle vaut pour tous les utilisateurs de l'instance**, pas seulement pour
+  celui qui l'a déclenchée : un rôle n'ayant que `edit_monitor`, qui voyait 59
+  entrées sans `adddata`, en voit 63 avec `adddata` dès que la bascule est
+  active.
+- **Elle ne se réplique pas aux autres membres du SHC** : bascule sur le membre
+  A, le membre B reste à 93 entrées avec son lien `_show` intact. Derrière un
+  répartiteur de charge, le bouton apparaît donc **par intermittence**, selon le
+  membre servi.
+- **Elle n'écrit rien dans `etc/`** : aucun fichier de configuration modifié
+  après la bascule, ce qui oriente vers un état en mémoire, perdu au
+  redémarrage. Non vérifié en redémarrant.
+- **Elle demande `admin_all_objects`.** Le lien `_show` est servi aux rôles
+  portant `admin_all_objects` ; il ne l'est pas à un rôle
+  `edit_monitor + edit_manager_xml`. Un `POST` par un rôle sans le lien est
+  refusé (**403** observé pour un rôle sans `admin_all_objects`). Côté
+  interface, l'item de menu n'est **cliquable** que si l'utilisateur a
+  `edit_manager_xml` : il faut donc, en pratique, **les deux**.
+
+> **Lecture opérationnelle.** Sur un SHC, « donner Add Data à tel rôle » n'a pas
+> de solution par les seules capabilities de l'utilisateur : il faut aussi qu'un
+> compte d'administration ait activé *Show All Settings* **sur le membre où
+> l'utilisateur atterrit**, et rien ne garantit qu'il y atterrisse deux fois de
+> suite. Pour un usage durable, les voies robustes restent ailleurs : déclarer
+> les entrées par bundle depuis le deployer, passer par un Deployment Server
+> pour les forwarders, ou exposer une instance de saisie hors cluster.
 
 ---
 
-## 6. Méthode reproductible
+## 6. Le rôle minimal, selon le besoin
+
+Hors SHC, ou sur un membre de SHC dont la bascule est active :
+
+- **téléverser un fichier** (*Upload*) : `edit_upload_and_index` **et**
+  `edit_tcp_stream` ; aucune des deux ne suffit seule ;
+- **déclarer une entrée locale** (*Monitor*) : une seule de `edit_monitor`,
+  `edit_tcp`, `edit_udp`, `edit_scripted`, `edit_token_http` ;
+- **distribuer une configuration de forwarder** (*Forward*) :
+  `edit_deployment_server` ;
+- **basculer Show All Settings sur un membre de SHC** : `admin_all_objects`
+  (lien REST) **et** `edit_manager_xml` (item de menu cliquable).
+
+Ces capabilities n'ouvrent que l'assistant. Créer un index au passage suppose
+`indexes_edit` ; l'indexation effective suppose que le rôle ait un index de
+destination autorisé en écriture.
+
+---
+
+## 7. Méthode reproductible
 
 Rien de ce qui précède ne demande un navigateur : le facteur serveur se lit en
 REST, le facteur navigateur se lit dans le bundle JavaScript livré.
@@ -194,13 +254,19 @@ cat $SPLUNK_HOME/etc/apps/search/default/data/ui/manager/adddata.xml
 grep -o 'canAddData:function()\{0,3000\}' \
   $SPLUNK_HOME/share/splunk/search_mrsparkle/exposed/build/modules_nav/enterprise/index.js
 
-# 3. L'entree est-elle servie A CET UTILISATEUR ?
+# 3. L'entree est-elle servie A CET UTILISATEUR ? Le lien _show/_hide dit l'etat SHC.
 curl -sk -u '<user>:<password>' \
   'https://<instance>:8089/servicesNS/nobody/search/data/ui/manager?output_mode=json&count=0' \
-  | jq -r '.entry[].name' | grep -c '^adddata$'
+  | jq '{total: (.entry|length), adddata: ([.entry[].name]|index("adddata") != null), links: (.links|keys)}'
 
-# 4. Matrice : un role = une capability, un utilisateur jetable, puis suppression
-curl -sk -u '<admin>:<password>' -d name=<role> -d capabilities=<capability> \
+# 4. Basculer "Show All Settings" sur un membre de SHC, et revenir a l'etat initial
+curl -sk -u '<admin>:<password>' -X POST -d output_mode=json \
+  https://<membre-shc>:8089/servicesNS/nobody/search/data/ui/manager/_show
+curl -sk -u '<admin>:<password>' -X POST -d output_mode=json \
+  https://<membre-shc>:8089/servicesNS/nobody/search/data/ui/manager/_hide
+
+# 5. Matrice : un role = une capability, un utilisateur jetable, puis suppression
+curl -sk -u '<admin>:<password>' -d name=<role> -d capabilities=<capability> -d imported_roles= \
   https://<instance>:8089/services/authorization/roles
 curl -sk -u '<admin>:<password>' -d name=<user> -d password=<generated> -d roles=<role> \
   https://<instance>:8089/services/authentication/users
@@ -215,6 +281,9 @@ Points de méthode qui ont compté :
   `/data/ui/manager` est filtrée par les droits de l'appelant : c'est ce qui en
   fait un révélateur exact de l'expression `<read>`, à condition de
   s'authentifier avec le compte testé.
+- **Regarder les `links` de la collection, pas seulement les entrées.** La
+  présence de `_show` ou de `_hide` est le seul signal direct de l'état de
+  masquage SHC, et il est propre à l'utilisateur qui interroge.
 - **Un rôle sans rôle hérité.** Un `imported_roles` non vide fait entrer les
   capabilities du rôle parent et rend la ligne de matrice ininterprétable.
 - **Ne pas conclure d'un code HTTP.** Voir le « Page not available » en 200 du

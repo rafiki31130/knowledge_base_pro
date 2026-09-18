@@ -35,7 +35,7 @@ Chaque fiche reste générique et publiable.
 - [Diagnostiquer une commande de recherche custom : ni le code de retour ni le message ne sont fiables](./splunk-commande-custom-diagnostic-cli.md)
 - [Historique de recherche Splunk : deux magasins, une bascule à sens unique](./splunk-search-history-storage.md)
 - [Déclencheurs de rolling restart — SHC & cluster d'indexers](./splunk-rolling-restart-triggers.md)
-- [Le bouton « Add Data » : quelles capabilities, et pourquoi il n'existe pas en SHC](./splunk-add-data-capabilities.md)
+- [Le bouton « Add Data » : quelles capabilities, et pourquoi il est masqué en SHC](./splunk-add-data-capabilities.md)
 - [`splunk.secret` dans un Search Head Cluster — propagation à l'ajout de membre](./shc-splunk-secret-propagation.md)
 - [Cycle de vie des buckets en cluster multisite](./splunk-buckets-multisite-lifecycle.md)
 - [Rebalance d'un cluster d'indexeurs (multisite)](./splunk-rebalance-multisite.md)
