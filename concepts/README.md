@@ -40,3 +40,4 @@ Chaque fiche reste générique et publiable.
 - [Cycle de vie des buckets en cluster multisite](./splunk-buckets-multisite-lifecycle.md)
 - [Rebalance d'un cluster d'indexeurs (multisite)](./splunk-rebalance-multisite.md)
 - [ITSI + Federated Search](./splunk-itsi-federated-search.md)
+- [Latence de recherche et nombre de search peers : protocole de mesure et résultats](./splunk-latence-et-nombre-de-search-peers.md)
