@@ -55,7 +55,9 @@ Le témoin est la pièce maîtresse. Il interroge toujours les deux mêmes peers
 4. **30 recherches mesurées** par requête, espacées de 5 s, lancées depuis le **même membre** du SHC.
 
 Pour chaque exécution on relève `runDuration`, `startup.handoff`, le temps par peer, `eventCount` et `scanCount`. Pendant toute la série on échantillonne l'hôte — pourcentage des processeurs logiques, longueur de file du volume, mémoire libre — et les peers : pagination, OOM, redémarrages de `splunkd`.
-%%est-ce que le max est conservé ? Les recherches en série utilisent le cache, là première est un peu a part mais aussi très intéressante en soit%%
+
+**Rien n'est agrégé à la volée.** Les 30 exécutions sont conservées une à une, avec le détail par peer, et le registre garde pour chaque requête le minimum, la médiane, le maximum, le p95, l'écart interquartile et l'intervalle de confiance à 95 %. La médiane sert au verdict ; le maximum, lui, raconte autre chose — voir plus bas.
+
 ### Porte de validité
 
 Un run n'est pas interprété s'il ne passe pas des clauses **opposables, écrites avant la mesure** :
@@ -86,7 +88,20 @@ Médianes de `runDuration`, en secondes, sur 30 exécutions par point :
 |         32 | 0,935 |      0,842 |    0,726 |  0,203 | valide       |
 |         48 | 1,487 |      1,382 |    1,233 |  0,256 | **invalide** |
 | 48 (rejeu) | 1,689 |      1,408 |    1,431 |  0,249 | **invalide** |
-%%ajouter un graph%%
+
+```mermaid
+xychart-beta
+    title "Médiane de runDuration par palier (s)"
+    x-axis "Nombre de peers" ["2", "4", "8", "16", "32", "48"]
+    y-axis "Secondes" 0 --> 1.6
+    line [0.162, 0.198, 0.280, 0.470, 0.935, 1.487]
+    line [0.107, 0.169, 0.376, 0.557, 0.842, 1.382]
+    line [0.116, 0.187, 0.209, 0.443, 0.726, 1.233]
+    line [0.160, 0.165, 0.170, 0.178, 0.203, 0.256]
+```
+
+*Dans l'ordre des courbes : dense, terme rare, `tstats`, témoin. La quatrième, presque plate, est le témoin : c'est son immobilité qui rend les trois autres interprétables.*
+
 ### Le fan-out coûte, et le témoin le prouve
 
 Entre 2 et 32 peers, le terme rare est multiplié par **7,9** alors qu'il ne ramène toujours qu'une poignée d'événements : il ne balaye rien, ne transfère rien. Pendant le même temps le témoin passe de 0,160 à 0,203 s, soit **+27 %**.
@@ -98,6 +113,31 @@ C'est cette comparaison qui fait le résultat. Sans témoin, la croissance obser
 Le temps maximal passé sur un peer est quasi stable sur toute la série. Ce qui enfle, c'est la phase de démarrage : `startup.handoff` passe de 0,05 s à 2 peers à 3,56 s à 32 peers.
 
 **Attention à l'interprétation de ce champ : il est cumulé sur l'ensemble des peers.** Rapporté au peer, il passe d'environ 0,024 s à 0,111 s, soit un facteur 4,6 et non 71. L'effet reste réel et important, mais lire le chiffre brut comme un temps mural conduit à une conclusion spectaculaire et fausse. Un champ cumulé se normalise avant d'être mis en courbe.
+
+### Ce que la médiane cache : la queue de distribution
+
+La médiane est la bonne grandeur pour un verdict, parce qu'elle est robuste. C'est aussi ce qui la rend aveugle à ce qui arrive aux utilisateurs les mauvais jours. Rapport **maximum sur médiane**, terme rare :
+
+| Peers | médiane | maximum | rapport |
+| ----: | ------: | ------: | ------: |
+|     2 |   0,107 |   0,431 |     4,0 |
+|     8 |   0,376 |   0,903 |     2,4 |
+|    32 |   0,841 |   4,080 |     4,9 |
+|    48 |   1,407 |  31,357 |  **22,3** |
+
+Au palier saturé, `tstats` monte à 18,3 s pour une médiane de 1,43, et la recherche dense à 11,4 s pour 1,69. **La queue explose bien avant que la médiane ne double**, et le rapport max/médiane est donc un signal de saturation plus précoce que la médiane elle-même. Une campagne qui ne publie que des médianes passe à côté.
+
+### La première exécution mesurée n'est pas systématiquement la plus lente
+
+Question naturelle quand on lance 30 recherches en série : la première, sur cache froid, ne fausse-t-elle pas tout ? Les données disent que non, tant que l'hôte n'est pas saturé. Rapport de la première exécution mesurée à la médiane des 29 suivantes :
+
+- palier 2, terme rare : **3,96** — effet de cache franc ;
+- palier 8, dense : **2,14** ;
+- mais aussi 0,45, 0,58, 0,82, 0,88 sur d'autres couples palier/requête.
+
+Le signe change d'un cas à l'autre : après trois recherches de chauffe, ce qui reste est du bruit, pas un effet systématique. Une exception nette cependant, et elle est instructive : **au palier 48, la première exécution du témoin vaut 2,806 s pour une médiane de 0,242 — un facteur 11,6, et c'est le maximum de toute la série.** Sur un hôte saturé, la première exécution redevient un point singulier.
+
+Amélioration identifiée pour les campagnes suivantes : **mesurer l'exécution à froid comme une grandeur à part entière**, cache vidé explicitement, plutôt que de la jeter en chauffe. C'est le cas d'usage réel d'un analyste qui ouvre une recherche une fois par jour.
 
 ### Le plafond du banc, et ce qui sature en premier
 
@@ -135,6 +175,7 @@ La sur-souscription en vCPU explique la bascule : 1,31× au dernier palier valid
 - **Les peers sont minuscules** — 1 vCPU, 512 Mio. L'absence de pagination à tous les paliers indique qu'ils n'étaient pas le facteur limitant, mais les valeurs absolues ne se transposent pas à des indexeurs de production.
 - **Il est virtualisé sur un hôte unique.** Au-delà de la sur-souscription mesurée, la courbe se mélange à la contention de l'hôte. C'est une borne du banc, pas une propriété de Splunk.
 - **Les durées absolues n'ont aucun intérêt hors contexte.** Ce qui se transpose, ce sont les *rapports* entre paliers et la *forme* de la croissance.
+- **Le cache n'est pas contrôlé.** Les recherches s'enchaînent toutes les 5 secondes sur la même fenêtre : elles travaillent sur un cache chaud. Le comportement à froid n'est pas mesuré ici, seulement entrevu.
 
 ## À lire ensuite
 
