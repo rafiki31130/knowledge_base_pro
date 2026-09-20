@@ -16,6 +16,8 @@ Le piège est que la réponse naïve — lancer la même recherche sur des clust
 
 Tout le protocole consiste à rendre 2 et 3 observables pour pouvoir les écarter.
 
+**Et la latence médiane n'est pas le seul résultat attendu : la dispersion en est un aussi.** Une recherche dont la médiane double mais dont le p95 est multiplié par dix n'a pas le même effet sur les utilisateurs. Le protocole décrit ci-dessous conserve donc toutes les exécutions, et la section [D'où vient la variabilité](#dou-vient-la-variabilité--deux-régimes) montre qu'elle a deux sources distinctes.
+
 ## Protocole
 
 ### Banc
@@ -56,7 +58,7 @@ Le témoin est la pièce maîtresse. Il interroge toujours les deux mêmes peers
 
 Pour chaque exécution on relève `runDuration`, `startup.handoff`, le temps par peer, `eventCount` et `scanCount`. Pendant toute la série on échantillonne l'hôte — pourcentage des processeurs logiques, longueur de file du volume, mémoire libre — et les peers : pagination, OOM, redémarrages de `splunkd`.
 
-**Rien n'est agrégé à la volée.** Les 30 exécutions sont conservées une à une, avec le détail par peer, et le registre garde pour chaque requête le minimum, la médiane, le maximum, le p95, l'écart interquartile et l'intervalle de confiance à 95 %. La médiane sert au verdict ; le maximum, lui, raconte autre chose — voir plus bas.
+**Rien n'est agrégé à la volée.** Les 30 exécutions sont conservées une à une, horodatées, avec le détail par peer, et le registre garde pour chaque requête le minimum, la médiane, le maximum, le p95, l'écart interquartile et l'intervalle de confiance à 95 %. C'est cette conservation intégrale qui permet, après coup et sans remesurer, de croiser chaque exécution avec l'état de l'hôte au même instant.
 
 ### Porte de validité
 
@@ -74,6 +76,8 @@ Deux points de méthode comptent ici :
 
 - **Le seuil porte sur une fraction d'échantillons, pas sur un maximum.** Une pointe isolée de deux secondes sur une série de quinze minutes n'invalide rien ; une saturation soutenue, si. Un seuil sur le maximum rejette des runs parfaitement exploitables.
 - **Un run invalide se rejoue, il ne se corrige pas.** On ne retire pas les points gênants, on ne rejoue pas la seule requête fautive : on refait le palier entier, fenêtre comprise.
+
+Manque identifié à l'usage : **aucune clause ne porte sur la dispersion.** Un run dont le p95 vaut six fois la médiane passe la porte sans réserve. Une campagne ultérieure devrait opposer un critère de dispersion au même titre que les critères de saturation.
 
 ## Résultats
 
@@ -127,6 +131,37 @@ La médiane est la bonne grandeur pour un verdict, parce qu'elle est robuste. C'
 
 Au palier saturé, `tstats` monte à 18,3 s pour une médiane de 1,43, et la recherche dense à 11,4 s pour 1,69. **La queue explose bien avant que la médiane ne double**, et le rapport max/médiane est donc un signal de saturation plus précoce que la médiane elle-même. Une campagne qui ne publie que des médianes passe à côté.
 
+### D'où vient la variabilité : deux régimes
+
+La dispersion est élevée **partout**, y compris sur des paliers validés et sur un banc sans aucune charge concurrente. Coefficient de variation des 30 exécutions, et rapport p95 sur médiane :
+
+| Peers | terme rare : CV | p95/méd | témoin : CV | p95/méd |
+| ----: | --------------: | ------: | ----------: | ------: |
+|     2 |            0,64 |     2,4 |        0,40 |     2,2 |
+|     8 |            0,41 |     1,3 |        0,47 |     2,2 |
+|    16 |            0,27 |     1,3 |        0,87 |     3,1 |
+|    32 |            0,64 |     1,3 |        0,65 |     2,7 |
+|    48 |            1,85 |     3,9 |        1,20 |     6,0 |
+
+Les exécutions étant horodatées et l'hôte échantillonné pendant la même série, on peut trancher **sur les données déjà collectées**, sans remesurer : pour chaque exécution, on relève l'état de l'hôte au même instant, et on compare les exécutions lentes — plus du double de la médiane de leur requête — aux autres.
+
+| Peers | lentes : file / CPU | normales : file / CPU |
+| ----: | ------------------: | --------------------: |
+|     2 |            0 / 12 % |              0 / 11 % |
+|     8 |            0 / 16 % |              0 / 16 % |
+|    16 |            2 / 36 % |              1 / 17 % |
+|    32 |            5 / 98 % |              3 / 31 % |
+|    48 |           28 / 99 % |              5 / 54 % |
+
+Deux régimes se séparent nettement :
+
+1. **Un bruit de fond, présent dès 2 peers, sans aucun lien avec la charge de l'hôte.** À 2 et 8 peers, les exécutions lentes surviennent sur un hôte rigoureusement aussi calme que les autres — file à zéro, processeurs à 12 % contre 11 %. Une exécution sur dix dépasse pourtant le double de la médiane. La cause est ailleurs : mise en place du processus de recherche, entrées-sorties du répertoire de dispatch, vérification de bundle, ordonnancement interne de la VM. **Elle n'est pas élucidée par cette campagne.**
+2. **Un régime de rafales, qui apparaît à 32 peers et domine à 48.** Là, les exécutions lentes coïncident avec des pointes franches de l'hôte, et ces rafales sont **synchronisées entre requêtes** : au palier 48, un même tour voit les quatre requêtes ralentir ensemble, et cinq tours en voient au moins deux. Une cause commune, extérieure à Splunk.
+
+C'est le premier régime qui mérite l'attention, parce qu'il est le seul qui se transposerait à une production correctement dimensionnée. Le second est une propriété du banc, pas du produit.
+
+> Conséquence de méthode : **la synchronisation des lenteurs entre requêtes indépendantes est un test de cause commune.** Si plusieurs requêtes ralentissent au même instant, cherchez sous la plateforme ; si elles ralentissent chacune de leur côté, cherchez dans la chaîne de recherche.
+
 ### La première exécution mesurée n'est pas systématiquement la plus lente
 
 Question naturelle quand on lance 30 recherches en série : la première, sur cache froid, ne fausse-t-elle pas tout ? Les données disent que non, tant que l'hôte n'est pas saturé. Rapport de la première exécution mesurée à la médiane des 29 suivantes :
@@ -176,6 +211,7 @@ La sur-souscription en vCPU explique la bascule : 1,31× au dernier palier valid
 - **Il est virtualisé sur un hôte unique.** Au-delà de la sur-souscription mesurée, la courbe se mélange à la contention de l'hôte. C'est une borne du banc, pas une propriété de Splunk.
 - **Les durées absolues n'ont aucun intérêt hors contexte.** Ce qui se transpose, ce sont les *rapports* entre paliers et la *forme* de la croissance.
 - **Le cache n'est pas contrôlé.** Les recherches s'enchaînent toutes les 5 secondes sur la même fenêtre : elles travaillent sur un cache chaud. Le comportement à froid n'est pas mesuré ici, seulement entrevu.
+- **Le bruit de fond n'est pas expliqué.** La variabilité résiduelle observée dès 2 peers, sans corrélation avec l'hôte, reste une question ouverte.
 
 ## À lire ensuite
 
