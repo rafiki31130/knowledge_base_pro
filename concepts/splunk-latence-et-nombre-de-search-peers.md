@@ -77,16 +77,16 @@ Deux points de méthode comptent ici :
 
 Médianes de `runDuration`, en secondes, sur 30 exécutions par point :
 
-| Peers | dense | terme rare | `tstats` | témoin | Verdict |
-| ---: | ---: | ---: | ---: | ---: | --- |
-| 2 | 0,162 | 0,107 | 0,116 | 0,160 | valide |
-| 4 | 0,198 | 0,169 | 0,187 | 0,165 | valide |
-| 8 | 0,280 | 0,376 | 0,209 | 0,170 | valide |
-| 16 | 0,470 | 0,557 | 0,443 | 0,178 | valide |
-| 32 | 0,935 | 0,842 | 0,726 | 0,203 | valide |
-| 48 | 1,487 | 1,382 | 1,233 | 0,256 | **invalide** |
-| 48 (rejeu) | 1,689 | 1,408 | 1,431 | 0,249 | **invalide** |
-
+|      Peers | dense | terme rare | `tstats` | témoin | Verdict      |
+| ---------: | ----: | ---------: | -------: | -----: | ------------ |
+|          2 | 0,162 |      0,107 |    0,116 |  0,160 | valide       |
+|          4 | 0,198 |      0,169 |    0,187 |  0,165 | valide       |
+|          8 | 0,280 |      0,376 |    0,209 |  0,170 | valide       |
+|         16 | 0,470 |      0,557 |    0,443 |  0,178 | valide       |
+|         32 | 0,935 |      0,842 |    0,726 |  0,203 | valide       |
+|         48 | 1,487 |      1,382 |    1,233 |  0,256 | **invalide** |
+| 48 (rejeu) | 1,689 |      1,408 |    1,431 |  0,249 | **invalide** |
+%%ajouter un graph%%
 ### Le fan-out coûte, et le témoin le prouve
 
 Entre 2 et 32 peers, le terme rare est multiplié par **7,9** alors qu'il ne ramène toujours qu'une poignée d'événements : il ne balaye rien, ne transfère rien. Pendant le même temps le témoin passe de 0,160 à 0,203 s, soit **+27 %**.
