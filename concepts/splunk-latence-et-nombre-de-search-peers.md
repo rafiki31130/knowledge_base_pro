@@ -55,7 +55,7 @@ Le témoin est la pièce maîtresse. Il interroge toujours les deux mêmes peers
 4. **30 recherches mesurées** par requête, espacées de 5 s, lancées depuis le **même membre** du SHC.
 
 Pour chaque exécution on relève `runDuration`, `startup.handoff`, le temps par peer, `eventCount` et `scanCount`. Pendant toute la série on échantillonne l'hôte — pourcentage des processeurs logiques, longueur de file du volume, mémoire libre — et les peers : pagination, OOM, redémarrages de `splunkd`.
-
+%%est-ce que le max est conservé ? Les recherches en série utilisent le cache, là première est un peu a part mais aussi très intéressante en soit%%
 ### Porte de validité
 
 Un run n'est pas interprété s'il ne passe pas des clauses **opposables, écrites avant la mesure** :
