@@ -37,3 +37,4 @@ Chaque fiche suit la même structure :
 - [Stack média conteneurisée](./stack-media.md) — patterns conteneurs, `qbittorrent-nox`, API *arr (`X-Api-Key`), VPN gluetun (Docker → [docker.md](./docker.md)).
 - [Mermaid dans Obsidian](./mermaid-obsidian.md) — diagrammes en texte : flowchart/sequence/state/ER, liens internes, thème, portabilité GitHub/Forgejo.
 - [n8n](./n8n.md) — automatisation de workflows : expressions `{{ }}`, nœuds clés, webhooks, déploiement Docker self-hosted, CLI (`export/import/execute`), debug par executions.
+- [Splunk TrackMe (v2)](./splunk-trackme.md) — surveillance d'objets et chaîne d'alerte : les six composants, contrat de recherche Flex, statut/seuils/policies, incident stateful (opened/updated/closed), notables et intégration ITSM, enrichissement CMDB, ack et SLA ; cas d'usage lookups.
