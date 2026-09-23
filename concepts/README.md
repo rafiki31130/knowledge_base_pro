@@ -41,3 +41,5 @@ Chaque fiche reste générique et publiable.
 - [Rebalance d'un cluster d'indexeurs (multisite)](./splunk-rebalance-multisite.md)
 - [ITSI + Federated Search](./splunk-itsi-federated-search.md)
 - [Latence de recherche et nombre de search peers : protocole de mesure et résultats](./splunk-latence-et-nombre-de-search-peers.md)
+- [Chronologie d'une recherche distribuée : ce que le fil transporte, et quand](./splunk-chronologie-recherche-distribuee.md)
+- [Mesurer la chronologie d'une recherche distribuée sans accès système aux indexeurs](./splunk-mesurer-chronologie-recherche-sans-acces-systeme.md)
