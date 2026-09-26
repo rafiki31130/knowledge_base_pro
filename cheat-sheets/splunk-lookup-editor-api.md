@@ -57,8 +57,20 @@ curl -sk -H "$AUTH" -X DELETE \
 
 Modifier une ligne = **lire, modifier, réécrire** le tableau entier.
 
-`owner=nobody` crée une lookup de niveau app ; `owner=<compte appelant>` crée une lookup
-privée (`etc/users/<compte>/<app>/lookups/`).
+Création et alimentation se font **en un seul appel** (`lookup_contents` + `isNew=true`).
+Une *définition* de lookup (`transforms.conf`) reste un objet distinct, à créer à part
+(`POST .../data/transforms/lookups`) seulement si l'on en a besoin : le fichier seul suffit
+pour `inputlookup assets.csv` et `lookup assets.csv`.
+
+Visibilité à la création :
+
+- `owner=nobody` : lookup **de niveau app** (`apps/<app>/lookups/`), mais le propriétaire
+  enregistré est le **compte appelant** (voir pièges).
+- `owner=<compte appelant>` : lookup **privée**, partage `user` (`etc/users/<compte>/<app>/lookups/`).
+- Au niveau app, le partage effectif suit les métadonnées de l'app : `app` si
+  `default.meta` a `export = none`, `global` si l'app exporte (cas de `search`).
+- Recommandé pour une automatisation : créer avec `owner=nobody`, puis
+  `POST .../data/lookup-table-files/<f>/acl` avec `sharing=app owner=nobody`.
 
 Sauvegardes (voir pièges avant de s'y fier) :
 
