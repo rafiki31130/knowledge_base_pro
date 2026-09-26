@@ -534,7 +534,17 @@ Pour rapprocher les deux captures, mesurer l'écart d'horloge entre les machines
 
 ### 3. Le fan-out coûte, et il est réductible
 
-Le levier connu est de réduire le nombre de peers interrogés. Sur le banc, passer de 24 à 12 peers rend **−40 % de `runDuration`**, point mesuré et non extrapolé. Le mécanisme documenté pour y parvenir en multisite est l'**affinité de site** d'une tête de recherche. Ce n'est pas un réglage anodin : il change ce que les recherches voient, et demande son propre arbitrage et sa propre mesure de référence.
+Le coût croît avec le nombre de peers **sollicités**. Sur le banc, restreindre une recherche à 12 peers sur 24 par une clause `splunk_server` rend **−40 % de `runDuration`** : la tête ne se connecte plus aux peers exclus, son `search.log` les déclare `optimized out`. Mais cette clause restreint aussi les données interrogées : ce n'est pas un réglage de déploiement.
+
+**L'affinité de site ne produit pas cet effet, et c'est mesuré.** Une tête de recherche affectée à un site ne rend plus que les résultats des copies primaires de son site, et le résultat reste complet si ce site détient une copie interrogeable de chaque bucket. Mais elle **sollicite toujours tous les peers** : sur le banc, 24 connexions sous affinité comme sans, les peers de l'autre site exécutent leur part et ne rendent rien. `runDuration` : 0,3135 s sous affinité, 0,3125 s sans, écart nul. L'affinité change **qui rend** les résultats, pas **qui est sollicité**, et le coût du fan-out est payé par peer sollicité.
+
+Deux conséquences :
+
+- **Ne pas attendre de gain de latence de l'affinité de site.** Son intérêt est ailleurs (trafic inter-sites, tolérance à la perte d'un site).
+- **Ne pas la combiner avec une restriction `splunk_server`** : les copies primaires du site affecté se trouvent aussi sur des peers exclus par la clause, et des événements disparaissent du résultat (33 sur 36 sur le banc).
+
+Le seul moyen de réduire durablement le nombre de peers sollicités, sans réduire les données visibles, est de **découper les index par groupe de peers**, de sorte qu'une recherche sur un index ne concerne que les peers qui le portent. C'est une décision d'architecture, pas un réglage.
+
 
 ### 4. Ce que le diagnostic ne dira pas
 
