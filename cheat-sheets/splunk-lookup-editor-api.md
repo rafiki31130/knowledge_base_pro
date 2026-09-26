@@ -132,10 +132,14 @@ Un rôle créé « vide » hérite quand même du stanza `[default]` d'`authoriz
 - **Appel de réplication en 403.** L'add-on appelle `replication/configuration/lookup-update-notify`,
   refusé pour un compte non admin ; l'erreur est avalée et la réplication SHC a lieu quand
   même via `lookup-table-files`.
+- **Une écriture refusée laisse un reste.** Sur un 403, le fichier que l'add-on a déposé dans
+  `$SPLUNK_HOME/var/run/splunk/lookup_tmp/` n'est pas nettoyé. Sans accès disque, on ne le voit
+  pas ; prévoir un nettoyage côté système si les refus se répètent.
 - **`expires_on` à la création du jeton** : `+7d` et un epoch ont été refusés sur 9.4.6 ;
   sans paramètre, l'expiration par défaut de `tokens_auth` s'applique.
 - **Tracer ce que fait l'add-on** : `index=_internal sourcetype=splunkd_access <compte>`
   montre les appels internes faits avec la session de l'appelant et leur code retour.
+
 
 ## Voir aussi
 
