@@ -38,3 +38,5 @@ Chaque fiche suit la même structure :
 - [Mermaid dans Obsidian](./mermaid-obsidian.md) — diagrammes en texte : flowchart/sequence/state/ER, liens internes, thème, portabilité GitHub/Forgejo.
 - [n8n](./n8n.md) — automatisation de workflows : expressions `{{ }}`, nœuds clés, webhooks, déploiement Docker self-hosted, CLI (`export/import/execute`), debug par executions.
 - [Splunk TrackMe (v2)](./splunk-trackme.md) — surveillance d'objets et chaîne d'alerte : les six composants, contrat de recherche Flex, statut/seuils/policies, incident stateful (opened/updated/closed), notables et intégration ITSM, enrichissement CMDB, ack et SLA ; cas d'usage lookups.
+- [Splunk Lookup Editor : API REST](./splunk-lookup-editor-api.md) : ajouter, lire, modifier, supprimer une lookup CSV par l'API de l'add-on ; droits minimaux mesurés (`upload_lookup_files`, write app pour créer et supprimer, write objet pour modifier) ; pièges (200 sans écriture, owner, sauvegardes en SHC).
+- [n8n : piloter une lookup Splunk via Lookup Editor](./n8n-splunk-lookup-editor.md) : workflow minimal, nœud HTTP Request en Form Urlencoded, nœud Code pour construire `contents`, ce qu'il ne faut pas rater.
