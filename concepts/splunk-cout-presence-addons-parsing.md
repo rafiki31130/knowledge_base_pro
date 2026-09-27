@@ -157,6 +157,57 @@ Mode Fast, mode Verbose, et toutes optimisations coupées (`| noop search_optimi
 | Désactiver les eventtypes inutilisés d'un add-on (`disabled = 1`) | non mesuré, même mécanisme que le retrait | à refaire à chaque mise à jour de l'add-on |
 | `tstats` sur datamodels accélérés au lieu des recherches par tag | non mesuré | accélération à maintenir |
 
+## Précision de la recherche et écriture des eventtypes
+
+Deux questions : le coût des eventtypes dépend-il des sourcetypes que la recherche demande ? Et vaut-il la peine de réécrire les eventtypes d'un add-on ?
+
+### Le typage ne dépend pas de la recherche, l'expansion d'un tag si
+
+Avec les 52 add-ons réels, une recherche rare précisée par `index` seul, `index` + `sourcetype`, `index` + `sourcetype` + `source`, ou `index=*` fait **toujours 9 126 comparaisons de typage**, pour la même évaluation côté tête (0,20 à 0,24 s). **Tous les eventtypes exportés sont chargés et compilés à chaque recherche, quels que soient les sourcetypes demandés.**
+
+L'expansion d'un tag, elle, est élaguée : l'optimiseur retire les eventtypes dont une ancre (`sourcetype`, `source`) contredit une ancre de la recherche.
+
+| `tag=authentication`, précision de la recherche | recherche normalisée | évaluation côté tête |
+| --- | ---: | ---: |
+| `index` seul | **163 080 car.** | 1,07 s |
+| `index` + `source` | 94 024 | 1,11 s |
+| `index` + `sourcetype` | **9 354** | 0,28 s |
+| `index` + `sourcetype` + `source` | **1 724** | 0,26 s |
+
+Le délai avant la sollicitation des peers passe de 3,75 à 1,85 s avec le sourcetype. Chaque ancre ajoutée élague les eventtypes qu'elle contredit, et seulement ceux-là : un `sourcetype` ne contredit pas un eventtype ancré sur une `source`, ni l'inverse. Ce qui survit à un `sourcetype` dans ce corpus, ce sont surtout les eventtypes d'Unix and Linux ancrés sur `source=/var/log/*`, `/var/adm/*`, `/etc/*`.
+
+### L'écriture des eventtypes décide de ce qui est élagable
+
+Essai contrôlé sur 60 add-ons synthétiques, eventtypes écrits de trois façons :
+
+| écriture | exemple | tag, `index` seul | tag, `index` + `sourcetype` des données | évaluation côté tête |
+| --- | --- | ---: | ---: | --- |
+| ancrée | `sourcetype="st:2" action=a2` | 10 004 car. | **250** (élagage total) | référence |
+| champs seuls | `action=a2 code2=*` | 5 924 | **5 952** (aucun élagage) | comparable |
+| composée, un niveau | `eventtype=et_0 action=a5` sur des eventtypes de base ancrés | 9 224 | **250** (élagage total) | **+40 à +70 %** |
+
+Les eventtypes des 52 add-ons réels sont majoritairement bien écrits : sur 1 386, 983 ancrés sur un sourcetype exact, 71 sur un sourcetype à joker, 68 sur une `source`, 227 composés, une vingtaine non ancrés.
+
+### Ce qu'on peut en tirer
+
+- **Le gain le moins coûteux : préciser `index`, `sourcetype` et `source` dans toute recherche par tag.** Expansion divisée par 17 à 95 sur le banc, sans rien toucher aux add-ons.
+- **Retoucher un eventtype** (en `local/eventtypes.conf` de son app, qui l'emporte sur `default` et survit aux mises à jour) n'a d'intérêt que pour ceux qui survivent à cette précision : ajouter une ancre `sourcetype` aux eventtypes ancrés sur une `source` ou non ancrés, aplatir les eventtypes composés. Chaque retouche est à revoir à chaque version de l'add-on.
+- **Aucune réécriture ne réduit le coût de typage**, qui dépend du nombre d'eventtypes exportés : seuls la désactivation, le partage au niveau de l'app et l'eventtype inexistant requis agissent dessus.
+
+Pour repérer en production les eventtypes qu'aucune précision de recherche n'élague :
+
+```spl
+| rest /servicesNS/-/-/saved/eventtypes splunk_server=local count=0
+| rename eai:acl.app AS app, eai:acl.sharing AS partage
+| eval ancre=case(match(search,"(?i)(^|[\s(])sourcetype\s*(=|IN)"),"sourcetype",
+                  match(search,"(?i)(^|[\s(])source\s*="),"source",
+                  match(search,"(?i)eventtype\s*="),"composé",
+                  true(),"non ancré")
+| stats count BY app partage ancre
+| sort app ancre
+```
+
+
 ## Quantifier sur une plateforme de production
 
 Toutes les requêtes ci-dessous sont en lecture seule, sans mutation, et ont été **exécutées sur le banc**. Chacune se lance depuis une tête de recherche ; `splunk_server=local` borne les `| rest` à l'instance où l'on se trouve, ce qui suffit en SHC puisque les membres partagent la même configuration.
