@@ -24,3 +24,4 @@ variantes → pièges.
 - [`tstats` et `summariesonly` : recherche accélérée](tstats-summariesonly.md)
 - [Multivalue en SPL : `mvexpand`, `mvfilter`, `mvcount`](multivalue-spl.md)
 - [Commandes personnalisées : une génératrice rend des résultats, pas des événements](commandes-custom-generatrices.md)
+- [`collect output_format=hec` : un summary index avec champs indexés](collect-hec-champs-indexes.md)
