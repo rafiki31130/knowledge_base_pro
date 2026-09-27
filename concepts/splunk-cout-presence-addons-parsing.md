@@ -9,11 +9,12 @@ Cette fiche donne la mesure (add-ons synthétiques puis réels), ce qui coûte e
 1. **C'est un coût de présence, pas d'application.** Les compteurs d'application aux événements (`command.search.kv`, `.lookups`, `.fieldalias`, `.tags`) restent au millième de seconde. Le temps part avant que le moindre événement soit lu.
 2. **Avec de vrais add-ons, le coût croît linéairement avec le nombre d'add-ons partagés en `global`** : environ 0,31 s par add-on sur le banc, à 5, 13 et 52 add-ons.
 3. **Un add-on ne s'évalue pas seul.** Mesurés un par un, les add-ons réels coûtent de 0 à 0,39 s ; ensemble, ils coûtent environ **deux fois la somme** de leurs coûts individuels.
-4. **Les eventtypes et les tags désignent les add-ons coûteux, mieux que les directives d'extraction.** Toute recherche évalue tous les eventtypes exportés, et une recherche `tag=...` est réécrite en disjonction de tous les eventtypes qui portent ce tag.
-5. **Un add-on partagé au niveau de son app ne coûte rien aux autres recherches**, quel que soit son volume.
+4. **Les eventtypes et les tags désignent les add-ons coûteux, mieux que les directives d'extraction.** Toute recherche évalue tous les eventtypes exportés et actifs, quels que soient les sourcetypes qu'elle demande, et une recherche `tag=...` est réécrite en disjonction de tous les eventtypes qui portent ce tag.
+5. **Un add-on partagé au niveau de son app ne coûte rien aux autres recherches**, quel que soit son volume. **Désactiver 79 % des eventtypes rend 63 à 67 %** de la durée.
 6. **La tête de recherche paie aussi** : l'analyse de la recherche passe de 32 ms à 1,3 s avec 52 add-ons réels, avant qu'aucun peer ne soit sollicité.
-7. **Les lookups automatiques ne coûtent rien de mesurable**, malgré le libellé `Performing lookup expansions` qui domine le journal de la tête.
-8. **Deux leviers par recherche sont efficaces** : mettre le tag en second filtre (durée divisée par 3 à 5,5), et, pour une recherche qui n'utilise ni eventtype ni tag, déclarer requis un eventtype inexistant pour couper le typage (−36 à −51 %). Les modes Fast et Verbose n'y changent rien.
+7. **Les lookups automatiques ne coûtent rien de mesurable**, et un changement de configuration ne coûte qu'une recherche lente par processus neuf, pas un pic durable.
+8. **Deux leviers par recherche sont efficaces** : mettre le tag en second filtre (durée divisée par 3 à 5,5), et, pour une recherche qui n'utilise ni eventtype ni tag, déclarer requis un eventtype inexistant pour couper le typage (−36 à −51 %). Préciser `index`, `sourcetype` et `source` divise l'expansion d'un tag par 17 à 95. Les modes Fast et Verbose n'y changent rien.
+
 
 ## Le banc
 
@@ -148,14 +149,31 @@ Toute recherche évalue tous les eventtypes exportés (9 126 comparaisons ici), 
 
 Mode Fast, mode Verbose, et toutes optimisations coupées (`| noop search_optimization=false`) : aucun gain sur ce coût.
 
+### Désactiver les eventtypes inutiles
+
+Avec les 52 add-ons réels, 4 eventtypes sur 5 désactivés (1 091 sur 1 386) par un `local/eventtypes.conf` dans chaque app (`disabled = 1`), le reste inchangé, 15 mesures :
+
+| | typage (comparaisons) | recherche rare | recherche par tag | dispatch côté peer (recherche rare) |
+| --- | ---: | ---: | ---: | ---: |
+| tous les eventtypes actifs | 9 126 | **15,6 s** | **24,9 s** | 10,9 s |
+| 79 % désactivés | **998** | **5,8 s** (−63 %) | **8,1 s** (−67 %) | 1,95 s |
+
+Le typage baisse dans la proportion des eventtypes retirés, et la durée suit. **C'est le levier structurel le plus fort mesuré** : un eventtype désactivé sort du coût de présence, alors qu'un eventtype actif le paie même quand aucune recherche ne demande son sourcetype. La recherche par tag en profite aussi : `tag=authentication` passe de 163 080 à 21 760 caractères.
+
+### Pas de pic durable après un changement de configuration
+
+Chaque ajout ou suppression d'un objet de connaissance (macro, eventtype) produit une nouvelle génération du bundle, reçue par les peers **1 min 30 à 2 min 15 après le geste**. La première recherche servie par cette génération tourne dans un processus de recherche neuf, qui charge et compile toute la configuration : sur le banc, 2,3 à 3,0 s avant la sollicitation des peers au lieu de 1,5 s. **Dès la recherche suivante, tout est revenu** : ni pic prolongé, ni dégradation cumulative. Avec beaucoup d'add-ons, le coût d'un changement de configuration se limite donc à une recherche lente par processus.
+
+
 ### Leviers structurels
 
 | levier | effet mesuré sur le banc | contrepartie |
 | --- | --- | --- |
+| Désactiver les eventtypes inutilisés d'un add-on (`disabled = 1` en `local/eventtypes.conf`) | **−63 à −67 %** pour 79 % d'eventtypes désactivés | à revoir à chaque mise à jour de l'add-on ; les tags portés par ces eventtypes disparaissent |
 | Partager les eventtypes et tags d'un add-on au niveau de son app plutôt qu'en `global` | coût nul pour les autres apps | les recherches et datamodels CIM hors de l'app ne voient plus ces objets |
 | Retirer des têtes de recherche les add-ons inutiles | ≈ 0,3 s par add-on `global` sur le banc | inventaire préalable (requête 1 ci-dessous) |
-| Désactiver les eventtypes inutilisés d'un add-on (`disabled = 1`) | non mesuré, même mécanisme que le retrait | à refaire à chaque mise à jour de l'add-on |
 | `tstats` sur datamodels accélérés au lieu des recherches par tag | non mesuré | accélération à maintenir |
+
 
 ## Précision de la recherche et écriture des eventtypes
 
