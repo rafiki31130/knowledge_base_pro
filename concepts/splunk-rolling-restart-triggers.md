@@ -59,12 +59,20 @@ Symétriquement, chaque **peer** passe le bundle reçu dans son
 n'orchestre alors le rolling restart **que des peers concernés**
 (`onlyRestartAdvertisingPeers`). La logique « contenu, pas acte » est identique.
 
-### 1.3 La validation de bundle ne prédit pas le restart
+### 1.3 La validation simple ne prédit pas le restart ; `--check-restart`, presque toujours
 
 `validate cluster-bundle` (IDXC) vérifie la **cohérence** du bundle (syntaxe,
 `btool check`), pas s'il déclenchera un restart. Un bundle valide peut être
 reloadable **ou** restart-required. Ne pas confondre « validation OK » et
 « reload à chaud ».
+
+`validate cluster-bundle --check-restart` (REST : `validate_bundle` avec
+`check-restart=true`) fait jouer aux peers un **reload à blanc** et rend, par peer,
+`restart_required_for_applying_dry_run_bundle` et `reasons_for_restart`
+(`One or more configs require a restart to take effect. Configs=<conf>`). Mesuré en
+9.4.6 : verdict exact sur chaque push testé, **sauf** les pushes d'`indexes.conf` faits
+sous `app.conf [triggers] reload.indexes = simple` : là, le dry-run annonce à chaque fois
+un restart que l'apply réel ne fait pas (§4 bis).
 
 ### 1.4 Flux de décision
 
@@ -183,8 +191,9 @@ qu'il peut et n'advertit au manager que les confs non-rechargeables.
 | `props.conf` / `transforms.conf` **index-time** (`LINE_BREAKER`, `SHOULD_LINEMERGE`, `TIME_FORMAT`, `TZ`, `SEDCMD`, `TRANSFORMS-`, routing d'index, `WRITE_META`, `DEST_KEY`) | **RELOAD** | ⚠️ **contre-intuitif** : en 9.4.x la chaîne de parsing index-time est rechargée **à chaud** (`No restart required at reload`). L'idée reçue « index-time = restart » est **fausse** ici |
 | `props.conf` / `transforms.conf` **search-time** | RELOAD | |
 | `indexes.conf` — **ajout** d'un index | RELOAD | l'`IndexWriter` initialise le nouvel index à chaud |
-| `indexes.conf` — attribut « à chaud » (`maxTotalDataSizeMB`, `frozenTimePeriodInSecs`) | RELOAD | |
-| `indexes.conf` — attribut structurant (`homePath` sur un index existant) | RESTART | |
+| `indexes.conf` — attributs **restart** sur un index existant | **RESTART** | 75 attributs classés un par un par `--check-restart`, sans trigger, recoupés par apply réel sans trigger effectif sur `repFactor`, `journalCompression`, `homePath` et `coldPath` : `homePath`, `coldPath`, `thawedPath`, `tstatsHomePath`, `coldToFrozenDir`, `coldToFrozenScript`, `datatype`, `journalCompression`, `maxConcurrentOptimizes`, `minRawFileSyncSecs`, `rawChunkSizeBytes`, `repFactor` (dans les deux sens), `syncMeta` |
+| `indexes.conf` — tous les autres attributs relevés | RELOAD | dont `maxTotalDataSizeMB`, `frozenTimePeriodInSecs`, `maxDataSize`, `maxHotBuckets`, `maxHotSpanSecs`, `maxWarmDBCount`, `homePath.maxDataSizeMB`, `coldPath.maxDataSizeMB`, `quarantine*Secs`, `enableTsidxReduction`, `tsidxWritingLevel`, `bucketMerging`, `summaryHomePath`, `disabled`. Attributs globaux (`memPoolMB`, `maxRunningProcessGroups`…) posés dans la strophe de l'index, où ils ne sont peut-être pas lus |
+| `indexes.conf` — `homePath` changé sur un index **qui a des données** | **RESTART + index vide** | ⚠️ après le restart, l'index pointe sur le nouveau chemin et compte **0 événement** ; ses buckets (origine et répliques) restent dans l'ancien répertoire, orphelins. Déplacer les buckets est un geste distinct |
 | `indexes.conf` — **suppression** d'un index | **RESTART + buckets non purgés** | ⚠️ les buckets restent sur disque ; la purge des données est une opération distincte |
 | `server.conf` — `[clustering]`, `[general]` (splunkd-tier) | RESTART | par stanza |
 | `limits.conf` — `[search]` | **RESTART** | ⚠️ **opposé du SHC** (où la même stanza RELOAD) |
@@ -198,7 +207,8 @@ qu'il peut et n'advertit au manager que les confs non-rechargeables.
 | `outputs.conf` (forward aval) | **RELOAD** | rechargé à chaud (endpoint `_reload` actif en 9.4.x). *(Verdict de 1er passage « RESTART » **corrigé** par validation secondaire : c'était un artefact d'échantillonnage de PID, pas un vrai restart.)* |
 | App **installée / activée / désactivée** via bundle | RELOAD | si le contenu est reloadable ; dépend du contenu, pas de l'acte |
 | App **désinstallée** (retirée du bundle manager) | **RESTART + PURGE** | le manager est **autoritatif** → l'app est **purgée** des peers **et** son retrait force un **restart** (`Restart required … One or more apps has been deleted`). *(Verdict de 1er passage « RELOAD+PURGE » **corrigé** par validation secondaire — l'app n'était pas garantie active au 1er test.)* |
-| Conf déclarant un reload endpoint custom (`app.conf [triggers] reload.<conf>`) | RELOAD | rend une conf normalement restart-required rechargeable |
+| Conf **custom** (sans `.spec` livré), ajout ou modification | RELOAD | même **sans** `app.conf [triggers]` ; `reload.<conf> = never` force au contraire un RESTART |
+| Conf livrée couverte par `app.conf [triggers]` | dépend de la conf et de la forme du trigger | voir §4 bis : le trigger ne retire pas toujours le restart, et un restart retiré laisse la conf **non effective** |
 | Conf locale d'un peer (`etc/system/local`, hors bundle) | NO-OP cluster + RESTART-REQUIRED **local** | non répliqué ; restart manuel du seul peer édité |
 | Re-push d'un bundle identique (sans diff) | NO-OP | `No new bundle will be pushed` |
 | Bundle invalide (`btool check` KO à l'apply) | BLOCKED | la validation peer échoue, bundle non activé |
@@ -207,7 +217,8 @@ qu'il peut et n'advertit au manager que les confs non-rechargeables.
 
 | Action | Effet observé |
 |---|---|
-| `validate cluster-bundle` (dry-run) | validation **asynchrone** ; **ne prédit pas** le restart (valide la cohérence, pas le déclenchement — §1.3) |
+| `validate cluster-bundle` (dry-run) | validation **asynchrone** ; seule, **ne prédit pas** le restart (§1.3) |
+| `validate cluster-bundle --check-restart` | prédit le restart par peer et nomme la conf en cause ; exact sauf `indexes.conf` sous trigger (§4 bis) |
 | `apply --skip-validation` | contourne la validation ; la décision reload/restart est **inchangée** |
 | Restart du **manager** seul | les peers **se ré-enregistrent** ; **pas** de rolling restart des peers |
 | Mode maintenance (`enable maintenance-mode`) avant un apply restart-required | **ne change pas** le déclenchement : le restart a lieu ; seul le **fixup** de buckets est suspendu |
@@ -220,6 +231,60 @@ qu'il peut et n'advertit au manager que les confs non-rechargeables.
 restart** (`-searchable true`), qui préserve la continuité de recherche,
 **nécessite plus de 2 peers** (sous 3 peers, Splunk le refuse : pas assez de
 redondance pour drainer).
+
+## 4 bis. Pousser sans rolling restart : `app.conf [triggers]`
+
+> Mesuré sur Splunk Enterprise **9.4.6**, cluster d'indexers multisite, deux peers,
+> **applies réels** (PID `splunkd` des peers avant/après), une variable par push, chaque
+> forme de trigger isolée. App témoin dans `manager-apps`, jamais retirée (le retrait
+> d'une app force un restart).
+
+`splunk apply cluster-bundle` n'a **aucune** option qui empêche le restart :
+`--skip-validation` et le mode maintenance laissent la décision inchangée (§4). Le seul
+levier est de déclarer la conf rechargeable dans l'app qui la porte :
+
+```ini
+# <app>/default/app.conf
+[triggers]
+reload.<conf> = simple             # forme « conf »
+reload.<conf>.<strophe> = simple   # forme « strophe »
+```
+
+`btool app list triggers` montre les deux formes fusionnées par-dessus
+`system/default/app.conf`. **L'effet, lui, dépend de la conf :**
+
+| Conf poussée | Forme qui retire le restart | Forme sans effet |
+|---|---|---|
+| `server.conf [httpServer]` (mesuré sur `busyKeepAliveIdleTimeout`) | `reload.server.httpServer = simple` | `reload.server = simple` |
+| `inputs.conf [splunktcp://<port>]` | `reload.inputs.splunktcp = simple` (type d'input, comme les `reload.inputs.monitor` du `default`) | `reload.inputs = simple` |
+| `indexes.conf` (les 13 attributs restart du §4, **et** la suppression d'un index) | `reload.indexes = simple` | `reload.indexes.<nom_index>`, `reload.indexes.default` |
+| `limits.conf [search]` (mesuré sur `max_searches_per_cpu`) | aucune | `reload.limits`, `reload.limits.search` |
+
+**Ce que coûte un restart retiré** : la conf est posée dans `peer-apps` et `btool` la
+montre, mais `splunkd` ne l'applique pas.
+
+- Listener `splunktcp` : le port **n'écoute pas** ; `POST
+  data/inputs/tcp/cooked/_reload` sur le peer ne le lie pas ; le rolling restart
+  suivant le lie.
+- `indexes.conf` : `data/indexes/<index>` sur le peer garde les **anciens chemins**
+  (`homePath`, `coldPath`, `thawedPath`, `tstatsHomePath`) quand `btool` montre déjà les
+  nouveaux ; un index supprimé du bundle reste listé, sans configuration
+  (`isReady = false`). Au rolling restart suivant, tout bascule d'un coup : nouveaux
+  chemins, index supprimé disparu de `data/indexes`, répertoires laissés sur disque.
+- Pour les autres attributs, ce relevé ne dit pas s'ils sont actifs : `data/indexes`
+  n'est pas un témoin fiable (il affiche `repFactor = 0` pour un index en `auto`).
+
+**Conséquence d'exploitation** : là où l'effet était observable (listener `splunktcp`,
+chemins et suppression d'index), le trigger n'a rien rendu rechargeable, il a
+**reporté** le restart sans le signaler. Le changement devient
+effectif au prochain redémarrage, quel qu'il soit, à un moment que personne n'a choisi. Pour choisir le moment du restart, deux
+pushes valent mieux : le rechargeable maintenant, le reste en fenêtre de maintenance.
+
+Le dry-run `--check-restart` **ignore** `reload.indexes = simple` : il annonce un
+restart que l'apply réel ne fait pas. Pour `server` et `inputs`, il a suivi le trigger.
+
+Sens inverse : `reload.<conf> = never` sur une conf custom force un restart que la conf,
+sans trigger, n'aurait pas demandé.
 
 ---
 
@@ -255,8 +320,15 @@ redondance pour drainer).
 - **`web.conf httpport` côté SHC : changement non effectif.** Web-tier : le
   captain skippe le restart splunkd et le port ne rebinde pas — il faudrait un
   restart splunkd réel pour qu'il prenne effet.
-- **`validate cluster-bundle` ne prédit pas le restart** (§1.3) : il valide la
-  cohérence, pas le déclenchement.
+- **`validate cluster-bundle` ne prédit pas le restart, `--check-restart` si**
+  (§1.3) : c'est le test à jouer avant chaque `apply`, avec une exception sous
+  trigger sur `indexes.conf`.
+- **Restart supprimé ≠ conf appliquée** (§4 bis) : un listener poussé sans restart
+  figure dans `btool` mais le port n'écoute pas, et un `_reload` REST n'y change rien.
+  Le changement prend effet au **prochain restart, quelle qu'en soit la cause** ; des
+  changements accumulés ainsi basculent tous ensemble à ce moment-là.
+- **Changer `homePath` vide l'index à l'écran** : les buckets restent dans l'ancien
+  chemin.
 
 ---
 
