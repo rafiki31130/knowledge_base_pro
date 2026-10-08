@@ -66,5 +66,6 @@ knowledge_base/
 ├── methodologies/   — méthodes d'investigation, frameworks
 ├── concepts/        — transverse : logs, regex, réseau…
 ├── cheat-sheets/    — aide-mémoire commandes par techno
-└── scripts/         — scripts utilitaires génériques (1 sous-dossier/script + schéma)
+├── scripts/         — scripts utilitaires génériques (1 sous-dossier/script + schéma)
+└── materials/       : objets prêts à importer (dashboards…), 1 niveau de sous-dossier max
 ```

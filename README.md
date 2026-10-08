@@ -33,6 +33,7 @@ elle n'a pas sa place ici. Anonymiser ou reformuler.
 - [`handbooks/`](./handbooks) — Handbooks thématiques (livres Markdown) pour un profil de lecteur ciblé. Voir [`handbooks/README.md`](./handbooks/README.md) pour la structure d'un handbook.
 - [`change-plans/`](./change-plans) — Templates génériques de change plans (description, risques, plan, rollback, validation, réserves). Rédigés en anglais.
 - [`scripts/`](./scripts) — Scripts utilitaires génériques et réutilisables (un sous-dossier par script, avec README + schéma).
+- [`materials/`](./materials) : objets prêts à importer (dashboards Splunk…), un niveau de sous-dossier max. Voir [`materials/README.md`](./materials/README.md).
 
 ## Workflow
 
