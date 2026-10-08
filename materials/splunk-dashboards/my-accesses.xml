@@ -1,0 +1,168 @@
+<dashboard version="1.1" theme="light">
+  <label>My Accesses</label>
+  <description>Effective rights of the logged-in user: roles, searchable indexes, apps, search quotas, capabilities.</description>
+
+  <search id="ctx">
+    <query>| rest splunk_server=local /services/authentication/current-context
+| fields username roles capabilities</query>
+  </search>
+
+  <search id="idx">
+    <query>| eventcount summarize=false index=* index=_*
+| stats sum(count) as events by index
+| eval type=if(match(index, "^_"), "internal", "data")</query>
+  </search>
+
+  <search id="apps">
+    <query>| rest splunk_server=local /services/apps/local count=0
+| search disabled=0 (visible=1 OR visible=true)
+| eval access=if('eai:acl.can_write'="1" OR 'eai:acl.can_write'="true", "read/write", "read")
+| rename title as id
+| table label access id</query>
+  </search>
+
+  <row>
+    <panel>
+      <single>
+        <title>User</title>
+        <search base="ctx"><query>| table username</query></search>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Searchable indexes</title>
+        <search base="idx"><query>| search type="$f_type$" | stats count</query></search>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Apps</title>
+        <search base="apps"><query>| stats count</query></search>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Apps with write access</title>
+        <search base="apps"><query>| search access="read/write" | stats count</query></search>
+      </single>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Direct roles</title>
+      <viz type="viz_tag_cloud.tag_cloud">
+        <search base="ctx"><query>| fields roles | mvexpand roles | eval count=1 | table roles count</query></search>
+      </viz>
+    </panel>
+    <panel>
+      <table>
+        <title>Role inheritance</title>
+        <search>
+          <query>| rest splunk_server=local /services/authorization/roles count=0
+| search [| rest splunk_server=local /services/authentication/current-context | fields roles | mvexpand roles | rename roles as title]
+| table title imported_roles
+| rename title as Role, imported_roles as "Inherits from"</query>
+        </search>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <title>Searchable indexes (click: last 15 minutes)</title>
+      <input type="text" token="f_idx" searchWhenChanged="true">
+        <label>Filter</label>
+        <default>*</default>
+        <prefix>index="*</prefix>
+        <suffix>*"</suffix>
+      </input>
+      <input type="dropdown" token="f_type" searchWhenChanged="true">
+        <label>Type</label>
+        <choice value="data">data only</choice>
+        <choice value="*">all (incl. internal)</choice>
+        <default>data</default>
+      </input>
+      <table>
+        <search base="idx"><query>| search type="$f_type$" $f_idx$ | sort index | table index type events</query></search>
+        <option name="count">20</option>
+        <format type="number" field="events"><option name="precision">0</option><option name="useThousandSeparators">true</option></format>
+        <drilldown>
+          <link target="_blank">search?q=search%20index%3D$row.index|u$&amp;earliest=-15m&amp;latest=now</link>
+        </drilldown>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Apps (click: open app)</title>
+        <search base="apps"><query>| sort label</query></search>
+        <option name="count">20</option>
+        <drilldown>
+          <link target="_blank">/app/$row.id|u$</link>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <table>
+        <title>Search quotas (limit vs. current usage)</title>
+        <search>
+          <query>| rest splunk_server=local /services/authorization/roles count=0
+| search [| rest splunk_server=local /services/authentication/current-context | fields roles | mvexpand roles | rename roles as title]
+| eval jobs=max(coalesce(srchJobsQuota, 0), coalesce(imported_srchJobsQuota, 0)),
+       rt=max(coalesce(rtSrchJobsQuota, 0), coalesce(imported_rtSrchJobsQuota, 0)),
+       disk=max(coalesce(srchDiskQuota, 0), coalesce(imported_srchDiskQuota, 0)),
+       win=mvappend(srchTimeWin, imported_srchTimeWin),
+       earl=mvappend(srchTimeEarliest, imported_srchTimeEarliest),
+       filter=mvappend(srchFilter, imported_srchFilter)
+| stats max(jobs) as jobs_quota max(rt) as rt_quota max(disk) as disk_quota
+        min(win) as win_min max(win) as win_max min(earl) as earl_min max(earl) as earl_max values(filter) as filter
+| appendcols
+    [| rest splunk_server=local /services/search/jobs count=0
+     | search author="$env:user$"
+     | eval running=if(in(isDone, "0", "false"), 1, 0), rt=if(in(isRealTimeSearch, "1", "true"), 1, 0),
+            sched=if(delegate="scheduler", 1, 0)
+     | stats sum(eval(if(running=1 AND rt=0 AND sched=0, 1, 0))) as jobs_used
+             sum(eval(if(running=1 AND rt=1, 1, 0))) as rt_used
+             sum(diskUsage) as disk_bytes]
+| fillnull value=0 jobs_used rt_used disk_bytes
+| eval disk_used=round(disk_bytes/1024/1024, 1),
+       win_eff=case(isnull(win_max), "n/a", win_min&lt;=0, "unlimited", true(), tostring(win_max, "duration")),
+       earl_eff=case(isnull(earl_max), "n/a", earl_min&lt;=0, "unlimited", true(), tostring(earl_max, "duration")),
+       filter=mvfilter(filter!=""),
+       filter_eff=if(isnull(filter), "none", mvjoin(filter, " OR "))
+| eval row=mvappend(
+    "Concurrent searches§".jobs_quota."§".jobs_used,
+    "Concurrent real-time searches§".rt_quota."§".rt_used,
+    "Search results disk space (MB)§".disk_quota."§".disk_used,
+    "Max time range per search§".win_eff."§",
+    "Earliest searchable time (back from now)§".earl_eff."§",
+    "Search filter§".filter_eff."§")
+| fields row
+| mvexpand row
+| rex field=row "^(?&lt;Parameter&gt;[^§]*)§(?&lt;Limit&gt;[^§]*)§(?&lt;in_use&gt;.*)$"
+| eval "Usage %"=if(isnum(tonumber(in_use)) AND tonumber(Limit)&gt;0, round(100*tonumber(in_use)/tonumber(Limit), 0), null())
+| rename in_use as "In use"
+| table Parameter Limit "In use" "Usage %"</query>
+        </search>
+        <option name="count">10</option>
+        <format type="color" field="Usage %">
+          <colorPalette type="list">[#53A051,#F8BE34,#DC4E41]</colorPalette>
+          <scale type="threshold">70,90</scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+
+  <row>
+    <panel>
+      <table>
+        <title>Effective capabilities</title>
+        <search base="ctx"><query>| fields capabilities | mvexpand capabilities | rename capabilities as capability | sort capability</query></search>
+        <option name="count">15</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

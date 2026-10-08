@@ -5,5 +5,6 @@ dashboard = un fichier source + une fiche `.md` du même nom.
 
 ## Dashboards
 
-- [Mes droits](./mes-droits.md) ([source](./mes-droits.xml)) : SimpleXML. Droits effectifs
-  de l'utilisateur connecté : rôles, index cherchables, apps (lecture / écriture), capacités.
+- [My Accesses](./my-accesses.md) ([source](./my-accesses.xml)) : SimpleXML, en anglais. Droits
+  effectifs de l'utilisateur connecté : rôles, index cherchables, apps, quotas de recherche
+  (limite et consommation), capacités.
