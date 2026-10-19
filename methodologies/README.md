@@ -29,6 +29,7 @@ abstraits, sans cas réel.
 
 - [Documenter un SI avec ITIL : Service Model, CI et CMDB](./itil-modele-documentation.md)
 - [Gouvernance du changement ITIL (Change Enablement) et pratiques associées](./itil-gouvernance-changement.md)
+- [Assessment d'entrée en service d'une solution Splunk](./splunk-assessment-entree-en-service.md) : critères d'acceptation ITIL appliqués à la collecte, aux add-ons, aux apps et aux intégrations
 
 ### Management
 
