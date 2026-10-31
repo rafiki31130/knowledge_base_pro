@@ -28,8 +28,10 @@ vérité.
 
 ## 1. Le mécanisme
 
-La règle commune aux deux topologies : **ce n'est pas l'acte de pousser un
-bundle qui déclenche un restart, mais le *contenu* du bundle.** Chaque conf est
+La règle commune aux deux topologies : **l'acte de pousser un bundle ne suffit
+pas à déclencher un restart**. Sur le SHC 9.4.6, le contenu et le mode des
+fichiers peuvent chacun provoquer un transfert ; un `touch` ou un nouvel inode
+à contenu et mode identiques ne l'ont pas fait (§3.1). Chaque conf est
 classée « rechargeable à chaud » ou « ne supporte pas le reload » ; seules les
 secondes forcent un restart. Le message affiché à l'`apply` est toujours
 conditionnel (« *might* initiate a rolling restart *depending on the
@@ -102,8 +104,8 @@ minimal isolé**, déclencher, observer des **signaux discriminants**, classer.
 | **Statut cluster** | SHC : `splunk show shcluster-status [--verbose]` · IDXC : `splunk show cluster-status` + `splunk show cluster-bundle-status` | cycle `RestartInProgress`, génération de bundle, `restart_required` |
 | **Bannières** | `GET /services/messages` | présence d'un message « restart required » |
 | **Décision dans `splunkd.log`** | `grep` ciblé : `Starting a rolling restart`, `advertiseRestartRequired`, `does not support reload`, `_reload` | le mécanisme exact (qui a déclenché, quand) |
-| **Conf effective** | `splunk btool <conf> list --debug <stanza>` sur le nœud cible, avant/après | RELOAD effectif vs restart-required **en attente** (conf pas encore active) |
-| **Appel `_reload`** | recherche d'un `GET\|POST .../_reload` dans `splunkd.log` | preuve dure du rechargement à chaud |
+| **Conf sur disque** | `splunk btool <conf> list --debug` sur le nœud cible, avant/après | Valeur résolue sur disque ; **ne prouve pas** son application au runtime |
+| **Appel `_reload` et effet** | journal du gestionnaire de conf, plus sonde de la fonction concernée | Appel de reload vs valeur réellement appliquée : les deux sont à distinguer |
 
 ### 2.2 La boucle
 
@@ -122,13 +124,14 @@ C'est la distinction la plus piégeuse. Règle non ambiguë :
 
 1. Le **PID a changé tout seul** après l'apply, sans intervention → **RESTART**
    (l'orchestrateur l'a fait).
-2. **PID stable + bannière « restart required » + conf non effective** (`btool`
-   ne montre pas encore la valeur), et c'est seulement un **restart manuel
+2. **PID stable + bannière « restart required » + conf non effective** (à
+   vérifier par une sonde de la fonction, car `btool` peut déjà montrer la
+   nouvelle valeur sur disque), et c'est seulement un **restart manuel
    ultérieur** qui rend la conf effective → **RESTART-REQUIRED (manuel)** :
    Splunk *demande* mais *ne fait pas*.
 
 Pour les cas potentiellement « manuels », il faut **attendre puis vérifier le
-PID et `btool` AVANT tout restart manuel**, sinon les deux issues sont
+PID, `btool` et effet runtime AVANT tout restart manuel**, sinon les deux issues sont
 indiscernables.
 
 Les 5 verdicts possibles : **RESTART** · **RELOAD** · **NO-OP** ·
@@ -155,7 +158,9 @@ deployer. Verdict du point de vue **cluster** (propagation aux membres).
 | `limits.conf` — `[search]` (ex. `max_searches_per_cpu`)                           | RELOAD                                     | le cœur `[search]` recharge ; quelques stanzas rares peuvent être restart-required                                                                                                               |
 | `indexes.conf` sur un SH (index de summary)                                       | RELOAD                                     | l'`IndexWriter` initialise le nouvel index à chaud                                                                                                                                               |
 | `inputs.conf` — `monitor`, `tcp`, `splunktcp`, `script` (4 types)                 | RELOAD                                     | ⚠️ même les ports TCP : sur un SH le listener n'est pas bindé (un SH n'est pas récepteur), la conf est répliquée + rechargée                                                                     |
-| `distsearch.conf` — `[distributedSearch] servers` (ajout de search peer)          | **RESTART**                                | ⚠️ « does not support reload » : touche le moteur de recherche distribuée → rolling restart forcé                                                                                                |
+| `distsearch.conf` - `[distributedSearch] servers` (ajout de search peer)          | **RELOAD**                                 | 9.4.6 : `peers/_reload`, PID stable ; rechargement observé, pair de test injoignable, pas de recherche distribuée prouvée (§3.1) |
+| `distsearch.conf` - `[distributedSearch:<nom>] servers` (stanza nommée)          | **RESTART**                                | 9.4.6 : `does not support reload`, flag restart et trois PID changés ; la synthèse historique confondait les deux formes de stanza (§3.1) |
+| `audit.conf` - `[auditTrail] queueing` via app deployer                          | **RESTART**                                | 9.4.6 : absence de gestionnaire de reload ; passage `true` vers `false` puis restauration, effet confirmé par l'indexation de `_audit` (§3.1) |
 | `web.conf` — `httpport` (port web)                                                | **non-effectif**                           | ⚠️ web-tier : le captain skippe le restart splunkd **et** le port ne rebinde pas → changement inefficace tant qu'aucun restart réel n'a lieu                                                     |
 | App **installée** / **activée-désactivée** via bundle                             | RELOAD                                     | si le contenu de l'app est reloadable ; le restart dépend du **contenu**, pas de l'acte d'installer                                                                                              |
 | App **désinstallée** (retirée du bundle deployer)                                 | **RESTART (destructif)**                   | retirer du bundle une app que le deployer avait **installée** la **supprime** des membres **et** exige un **restart** (confirmé en production). *Une observation de banc isolée avait conclu « NO-OP/pas de purge », mais le test était biaisé (app désactivée juste avant dans une séquence enchaînée) — non représentatif. Re-test propre (validation secondaire) : `completing an app deletion requires restart` + rolling restart + purge effective → **RESTART confirmé**.* |
@@ -170,8 +175,57 @@ défaut) et `-decommission_search_jobs_wait_secs`.
 > **Lecture opérationnelle SHC** : la surface restart réelle est **plus étroite**
 > que ne le laisse penser la doc. L'essentiel des confs (auth LDAP, inputs, apps
 > reloadables, index SH) **RELOAD**. Les vrais déclencheurs de restart :
-> `server.conf` (`[httpServer]`, `[sslConfig]`), `distsearch.conf servers`, et la
-> **désinstallation d'une app installée par le deployer** (destructive + restart).
+> `server.conf` (`[httpServer]`, `[sslConfig]`), `audit.conf` et la stanza nommée
+> `distsearch.conf [distributedSearch:<nom>]`, ainsi que la **désinstallation
+> d'une app installée par le deployer** (destructive + restart). La stanza
+> non nommée `[distributedSearch] servers` a été rechargée à chaud en 9.4.6.
+
+### 3.1 Métadonnées seules et `audit.conf` : essais complémentaires SHC 9.4.6
+
+Essais isolés sur un deployer et trois membres, `apply shcluster-bundle`, mode
+`merge_to_default`. Trois types de constat sont séparés : **NO-OP** (rien reçu),
+**RELOAD** (rechargement journalisé, PID stables), **RESTART** (flag annoncé,
+rolling restart et trois PID changés). Une ligne « bundle pushed successfully »
+ou « Starting a rolling restart ... onlyRestartAdvertisingPeers=1 » apparaît
+aussi lors de NO-OP : elle ne suffit pas à conclure.
+
+| Modification au deployer | `distsearch.conf` | `audit.conf` |
+|---|---|---|
+| Re-apply inchangé | NO-OP | NO-OP |
+| Réécriture à octets identiques, nouvel inode et nouvelles dates | NO-OP | NO-OP |
+| `touch` seul, mtime et ctime modifiés | NO-OP | NO-OP |
+| Mode seul `640 -> 644` | RELOAD, confirmé sur une autre app et au retour `644 -> 640` | RESTART, un seul essai |
+| Valeur de conf changée | `[distributedSearch] servers` : RELOAD ; stanza nommée `[distributedSearch:<nom>] servers` : RESTART | `[auditTrail] queueing` `true -> false` : RESTART ; restauration : RESTART |
+
+Le changement de mode est **retransmis** même si les octets et le mtime sont
+identiques. Pour `audit.conf`, le journal indique `No handler for conf="audit"`
+puis `required a restart: audit` ; la spec locale 9.4.6 annonce aussi un restart.
+Après `queueing=false`, le fichier `audit.log` continue de croître, mais les
+nouveaux événements ne rejoignent plus l'index local `_audit` ; restaurer
+`true` et redémarrer rétablit l'indexation. La spec précise qu'avec `false` il
+faut une entrée `inputs.conf` pour suivre ce fichier. Ainsi, `btool` et la
+présence du fichier ne suffisent pas à démontrer l'effet runtime.
+
+**Attention à `[triggers] reload.audit = simple`** : deux apps de test ont
+montré un push sans restart ; `btool` affiche alors `queueing=false`, mais
+`_audit` continue d'être indexé. Le trigger masque le redémarrage sans rendre
+la configuration active. Ce n'est pas une solution d'exploitation. La réponse
+REST `conf-audit` est restée à `1` lors de ces essais, y compris quand `btool`
+était à `false` ; **cet endpoint, interrogé de cette manière, n'est pas retenu
+comme sonde**. La cause de l'écart n'a pas été déterminée.
+
+**Portée** : un seul lab en 9.4.6 ; pas de pair de recherche fonctionnel pour
+les cas `distsearch.conf`, donc pas de recherche distribuée validée. Le verdict
+RELOAD vient des journaux, des PID et d'une tentative de connexion au second
+pair. Le propriétaire du fichier n'a pas été testé. Supprimer une app test
+après un essai est un **palier distinct** et a déclenché un rolling restart.
+
+Source des mesures et de l'audit indépendant : projet privé
+`splunk-shc-restart-metadata-hyperv`, `livrables/RESULTATS-distsearch.md`
+(PR wiki #1356 et correction #1357),
+`livrables/RESULTATS-rejeu-t4-audit.md` (PR wiki #1358), preuves A3-A6,
+B1-B10 et C1-C4. Les preuves brutes restent dans le wiki privé, pas dans
+cette KB publique.
 
 ---
 
@@ -296,6 +350,13 @@ sans trigger, n'aurait pas demandé.
   ces confs RELOAD à chaud** côté peer — le reloader de conf les prend sans
   redémarrer (`No restart required at reload`). Ne jamais présumer du restart sur
   ce critère : mesurer.
+- **`distsearch.conf` n'est pas un verdict unique côté SHC.** En 9.4.6,
+  `servers` sous `[distributedSearch]` a été rechargé ; sous une stanza
+  `[distributedSearch:<nom>]`, il a provoqué un rolling restart. Le tableau
+  historique résumait à tort le second cas comme le premier (§3.1).
+- **Métadonnées seules : distinguer mtime et mode.** Un `touch` ou une
+  réécriture aux mêmes octets n'a rien propagé ; un `chmod` seul a poussé
+  `distsearch.conf` (RELOAD) et `audit.conf` (RESTART) (§3.1).
 - **Mêmes confs, comportement OPPOSÉ selon la topologie.** `limits.conf` et
   `authentication.conf` sont **rechargés à chaud côté SHC** mais **restart côté
   indexer**. Toujours raisonner *par topologie*, jamais « cette conf = restart »
