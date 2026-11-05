@@ -188,19 +188,52 @@ curl -sk -u admin "https://localhost:8089/services/licenser/messages?output_mode
   `[license] report_interval` (de 1 min à 1 h, prévu par `server.conf.spec` pour les grands
   déploiements) pour espacer les remontées. À 15 min, la remontée lourde n'est pas allégée
   (14,9 s pour 1 M de sourcetypes, comme à 1 min), et l'usage arrive avec un intervalle de
-  retard (essai 5b). Que le coût de fond tombe à une fois par intervalle est une déduction, non
-  mesurée en régime établi.
-- Pour surveiller les remontées par peer sur le LM :
+  retard (essai 5b). En régime établi, le coût par remontée ne change pas, mais il n'est payé
+  qu'une fois par intervalle : 24 remontées de 2,4 à 3,3 s (médiane 2,7 s) en près de 6 h, au
+  lieu d'une par minute.
+
+## 6. Mesurer le temps de traitement par client
+
+Le LM trace chaque remontée dans `splunkd_access.log`. Le champ `spent`, extrait nativement
+pour `sourcetype=splunkd_access`, donne sa durée de traitement en ms. Un client est identifié
+par son IP (`clientip`) ; son nom vient de la résolution DNS inverse, s'il existe un
+enregistrement PTR.
+
+Synthèse par client, à lancer sur le LM ou sur une instance qui cherche dans son `_internal`.
+Les plus coûteux remontent en tête :
 
 ```spl
-index=_internal sourcetype=splunkd_access TERM(/services/masterlm/usage)
-| rex "(?<spent_ms>\d+)ms$"
-| timechart span=1m max(spent_ms) AS remontee_ms BY clientip
+index=_internal host=<license-manager> sourcetype=splunkd_access
+    TERM(/services/masterlm/usage) method=POST uri_path="/services/masterlm/usage"
+| stats count AS remontees count(eval(status!=200)) AS echecs
+        avg(spent) AS moy_ms perc95(spent) AS p95_ms max(spent) AS max_ms
+        sum(spent) AS total_ms latest(_time) AS derniere BY clientip
+| lookup dnslookup clientip OUTPUT clienthost
+| eval moy_ms=round(moy_ms), total_s=round(total_ms/1000,1),
+       etat=case(max_ms>=30000,"TIMEOUT", max_ms>=20000,"PROCHE TIMEOUT", true(),"OK"),
+       derniere=strftime(derniere,"%F %T %z")
+| sort - total_ms
+| table clientip clienthost remontees echecs moy_ms p95_ms max_ms total_s etat derniere
 ```
 
-Une valeur qui approche 30 000 signale un peer proche du `receive_timeout` par défaut.
+- `total_s` est le temps de traitement cumulé que le client a coûté au LM sur la période :
+  c'est la colonne qui désigne les peers à forte cardinalité.
+- `etat` compare le pire cas aux 30 s du `receive_timeout` par défaut côté peer : au-delà, le
+  peer compte la remontée comme échouée.
+- Sur le lab, sur 24 h, la recherche rend 30 remontées pour l'unique peer : moyenne 2 710 ms,
+  p95 3 258 ms, max 14 944 ms, 81,3 s cumulées.
 
-## 6. Limites
+Évolution dans le temps, une série par client :
+
+```spl
+index=_internal host=<license-manager> sourcetype=splunkd_access
+    TERM(/services/masterlm/usage) method=POST uri_path="/services/masterlm/usage"
+| timechart span=1m max(spent) AS remontee_ms BY clientip
+```
+
+Avec un `report_interval` supérieur à 1 min, prendre `span` égal à l'intervalle.
+
+## 7. Limites
 
 - Un seul peer. La concurrence entre peers, cause probable de l'OOM sur un grand parc, n'est
   pas reproduite.
