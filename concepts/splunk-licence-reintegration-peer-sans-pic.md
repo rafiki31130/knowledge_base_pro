@@ -74,6 +74,8 @@ sequenceDiagram
 | 3. 10 Go puis restart | LM éteint, 39 M d'événements (1 M de sourcetypes, 9,98 Go), restart du peer, lot de référence, LM rallumé | 14,5 s | 3,0 s | 255 Mo (le second lot seul) |
 | 4a. Restart, table conservée | LM allumé, lot de référence, restart du peer | pas de pic | 2,6 s par minute | 255 Mo |
 | 4b. Restart, table retirée | LM allumé, lot de référence, table déplacée pendant l'arrêt, restart du peer | pas de pic | 0 ms | **0** : l'usage déjà compté est effacé |
+| 5a. LM coupé entre deux remontées, restart | `report_interval = 15m`, LM allumé, 10 Go ingérés juste après une remontée, LM coupé avant la suivante, restart du peer, LM rallumé | 1 ms | 0 à 1 ms | **0** |
+| 5b. LM coupé entre deux remontées, table retirée à chaud | comme 5a, mais table déplacée splunkd en marche, sans restart | 242 ms, puis **14,9 s** à l'intervalle suivant | non mesuré | 4,1 Mo, puis **9,945 Go** (tout) |
 
 Les octets comptés valent 255 par événement : le saut de ligne n'est pas compté.
 
@@ -118,9 +120,34 @@ de 255 Mo à **0 octet** dans la même minute : le LM remplace l'usage du peer p
 celui-ci remonte. Ce n'est pas une optimisation, c'est **une altération du comptage de licence**
 (usage du jour effacé). À exclure.
 
+### Essai 5a : LM coupé entre deux remontées, puis restart du peer
+
+![LM coupé, restart](./img/splunk-lm-reintegration-5a-lm-coupe-restart.png)
+
+Cas de la panne en pleine collecte : le LM est allumé pendant toute l'ingestion, et il tombe
+avant que le peer ait remonté. `report_interval` passe à 15 min pour laisser le temps d'ingérer
+10 Go entre deux remontées. Le journal d'accès du LM confirme qu'aucune remontée n'a lieu entre
+la fin de l'ingestion et l'arrêt du LM. Le restart du peer (avec retour de l'intervalle par
+défaut) purge l'usage en attente : 0 octet compté, aucun pic au retour.
+
+### Essai 5b : LM coupé entre deux remontées, table retirée à chaud
+
+![LM coupé, table retirée](./img/splunk-lm-reintegration-5b-lm-coupe-table-retiree.png)
+
+Même séquence, mais sans restart : la table d'usage est déplacée pendant que splunkd tourne.
+Ça ne purge rien. L'usage en attente vit en mémoire, et la table sur disque n'a aucun rôle à
+son égard. Deux points à noter :
+
+- la première remontée après l'ingestion (+15 min) ne porte que 4,1 Mo, soit les 16 123
+  premiers événements du fichier ;
+- la suivante (+30 min) porte tout le reste : 14,9 s de traitement, et 9,945 Go comptés.
+
+Avec un intervalle long, l'usage arrive donc avec un décalage d'un intervalle, sans perte. Le
+mécanisme de ce découpage n'est pas établi.
+
 ## 4. État de licence du peer pendant la coupure
 
-Relevé après le restart du peer, LM toujours injoignable (essais 2 et 3) :
+Relevé après le restart du peer, LM toujours injoignable (essais 2, 3 et 5a) :
 
 - `licenseState=OK`, et `licenser/messages` vide ;
 - `last_manager_contact_success_time` **conservé** à travers le restart : il n'est ni remis à
@@ -144,7 +171,10 @@ curl -sk -u admin "https://localhost:8089/services/licenser/messages?output_mode
 
 - **Redémarrer le splunkd du peer juste avant sa reconnexion au LM** purge l'usage accumulé
   pendant la coupure, quel qu'en soit le volume (testé jusqu'à 39 M d'événements). Le LM ne
-  voit pas de pic au retour.
+  voit pas de pic au retour. Ça vaut aussi quand le LM tombe en pleine collecte, avant que le
+  peer ait remonté (essai 5a).
+- **Retirer la table à chaud ne purge rien** (essai 5b) : seul le restart vide l'usage en
+  attente, qui vit en mémoire.
 - **Redémarrer au plus près de la reconnexion :** tout ce qui est ingéré entre le restart et le
   retour du LM est remonté normalement.
 - **Contrepartie :** l'usage de la coupure n'est jamais compté. À faire valider au regard des
@@ -156,7 +186,10 @@ curl -sk -u admin "https://localhost:8089/services/licenser/messages?output_mode
 - **Le coût de fond n'est pas traité par un restart :** il dépend de la cardinalité du jour. Les
   leviers restent la réduction du nombre de sourcetypes dès le parsing et, côté peers,
   `[license] report_interval` (de 1 min à 1 h, prévu par `server.conf.spec` pour les grands
-  déploiements) pour espacer les remontées.
+  déploiements) pour espacer les remontées. À 15 min, la remontée lourde n'est pas allégée
+  (14,9 s pour 1 M de sourcetypes, comme à 1 min), et l'usage arrive avec un intervalle de
+  retard (essai 5b). Que le coût de fond tombe à une fois par intervalle est une déduction, non
+  mesurée en régime établi.
 - Pour surveiller les remontées par peer sur le LM :
 
 ```spl
@@ -171,7 +204,7 @@ Une valeur qui approche 30 000 signale un peer proche du `receive_timeout` par d
 
 - Un seul peer. La concurrence entre peers, cause probable de l'OOM sur un grand parc, n'est
   pas reproduite.
-- La grâce de 72 h n'est pas mesurée (coupures de 6 à 14 min).
+- La grâce de 72 h n'est pas mesurée (coupures de 40 s à 14 min).
 - Journée compressée : 1 M de sourcetypes actifs à chaque minute, ce qu'un trafic étalé sur
   24 h ne produit pas forcément.
 - À cette cardinalité, `license_usage.log` du LM tourne plus vite qu'il n'est lu (6 fichiers de
