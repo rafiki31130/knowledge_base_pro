@@ -1,6 +1,6 @@
 # Splunk Enterprise 9.4.6 vers 10.4 : évolutions techniques
 
-> Synthèse documentaire au 9 novembre 2026 pour Splunk Enterprise on-premise. Pas de validation en laboratoire ni de matrice de compatibilité des apps. Les fonctionnalités décrites ne sont pas nécessairement activées par la seule mise à niveau.
+> Synthèse documentaire au 10 novembre 2026 pour Splunk Enterprise on-premise. Pas de validation en laboratoire ni de matrice de compatibilité des apps. Les fonctionnalités décrites ne sont pas nécessairement activées par la seule mise à niveau.
 
 ## 10.0 : droits sur les recherches enregistrées
 
@@ -38,7 +38,7 @@ Source : [notes 10.0, Dashboard Studio et domaines de confiance](https://help.sp
 
 ## 10.0 : anciens endpoints de Search API
 
-Les endpoints **v1 dépréciés** de Search API sont désactivés par défaut ; la voie cible est **Search API v2**. Les endpoints originels v1 peuvent être adressés sans numéro ou avec `v1` dans l'URI ; un endpoint v2 exige `v2` dans l'URI. Une réactivation transitoire existe, sans remplacer la migration. Exemple d'impact : un client qui crée un job, lit ses résultats ou exporte des données au moyen d'un endpoint v1 peut échouer après l'upgrade alors que la même recherche fonctionne dans Splunk Web. **On ne doit pas remplacer mécaniquement un préfixe** : la référence ne permet pas ici d'établir un tableau fiable d'équivalences URI v1/v2 et méthodes. Inventorier les appels HTTP réels des scripts et SDK, notamment `results_preview`, `events`, `results`, `jobs/export` et `parser`, puis les confronter à la [référence des endpoints Search 10.4](https://help.splunk.com/en/splunk-enterprise/leverage-rest-apis/rest-api-reference/10.4/search-endpoints/search-endpoint-descriptions). Source : [notes 10.0, Search API](https://help.splunk.com/en/splunk-enterprise/release-notes-and-updates/release-notes/10.0/whats-new/welcome-to-splunk-enterprise-10.0), [référence Search 10.4](https://help.splunk.com/en/splunk-enterprise/leverage-rest-apis/rest-api-reference/10.4/search-endpoints/search-endpoint-descriptions).
+**Certains** endpoints Search API v1 dépréciés sont désactivés par défaut ; la voie cible est **Search API v2**. Cela ne remplace pas les préfixes REST généraux `/services/` et `/servicesNS/`, toujours employés dans la documentation 10.4 (par exemple `/services/saved/searches`). Les endpoints originels v1 peuvent être adressés sans numéro ou avec `v1` dans l'URI ; un endpoint v2 exige `v2` dans l'URI. Une réactivation transitoire existe, sans remplacer la migration. Exemple d'impact : un client qui crée un job, lit ses résultats ou exporte des données au moyen d'un endpoint v1 concerné peut échouer après l'upgrade alors que la même recherche fonctionne dans Splunk Web. **Ne pas remplacer mécaniquement `/services/` par `/servicesNS/`, ni ajouter `v2` à toutes les URI** : la référence ne permet pas ici d'établir un tableau fiable d'équivalences URI v1/v2 et méthodes. Inventorier les appels HTTP réels des scripts et SDK, notamment `results_preview`, `events`, `results`, `jobs/export` et `parser`, puis les confronter à la [référence des endpoints Search 10.4](https://help.splunk.com/en/splunk-enterprise/leverage-rest-apis/rest-api-reference/10.4/search-endpoints/search-endpoint-descriptions). Source : [notes 10.0, Search API](https://help.splunk.com/en/splunk-enterprise/release-notes-and-updates/release-notes/10.0/whats-new/welcome-to-splunk-enterprise-10.0), [référence Search 10.4](https://help.splunk.com/en/splunk-enterprise/leverage-rest-apis/rest-api-reference/10.4/search-endpoints/search-endpoint-descriptions), [audit structuré 10.4](https://help.splunk.com/en/splunk-enterprise/administer/manage-users-and-security/10.4/audit-activity-in-splunk-enterprise/about-structured-audit-trail-logs).
 
 ## 10.2 : SPL2 dans Dashboard Studio
 
@@ -53,7 +53,7 @@ Il s'agit de la **file d'attente**, pas des recherches déjà en cours. Une nouv
 
 Dimensionner en observant files et rejets : un quota trop faible casse les usages, un quota trop haut conserve la pression mémoire. Source : [authorize.conf 10.2](https://help.splunk.com/en/splunk-enterprise/administer/admin-manual/10.2/configuration-file-reference/10.2.0-configuration-file-reference/authorize.conf), [notes 10.2](https://help.splunk.com/en/splunk-enterprise/release-notes-and-updates/release-notes/10.2/whats-new/welcome-to-splunk-enterprise-10.2).
 
-## 10.2 : Audit Trail Log v2
+## 10.2 puis 10.4 : Audit Trail Log v2
 
 Format structuré **JSON** aligné sur le CIM, avec notamment `roles`, `session_id` et `correlation_id`. Activation documentée dans l'app **Audit Trail**, onglet **Setup**, option **Enable Audit Trail Log v2**. Les événements v2 se retrouvent ainsi :
 
@@ -61,7 +61,13 @@ Format structuré **JSON** aligné sur le CIM, avec notamment `roles`, `session_
 index=_audit sourcetype=audittrailv2
 ```
 
-L'ancien sourcetype est `audittrail`. Les deux formats peuvent coexister : revoir les recherches, alertes et extractions qui filtrent exclusivement l'ancien sourcetype ou analysent son texte. L'équivalent en fichier de configuration n'a pas été vérifié. Source : [notes 10.2](https://help.splunk.com/en/splunk-enterprise/release-notes-and-updates/release-notes/10.2/whats-new/welcome-to-splunk-enterprise-10.2).
+L'ancien sourcetype est `audittrail` :
+
+```spl
+index=_audit sourcetype=audittrail
+```
+
+**En 10.4, les deux formats sont actifs par défaut et peuvent coexister.** Activer v2 ne désactive donc pas automatiquement la production de l'ancien format. Une recherche `index=_audit` sans filtre de sourcetype peut rencontrer les deux. La documentation consultée ne précise pas si les événements historiques sont convertis ; ne pas présumer de conversion ou de suppression rétroactive. Revoir les recherches, alertes et extractions qui filtrent exclusivement l'ancien sourcetype ou analysent son texte. L'équivalent en fichier de configuration n'a pas été vérifié. Sources : [notes 10.2](https://help.splunk.com/en/splunk-enterprise/release-notes-and-updates/release-notes/10.2/whats-new/welcome-to-splunk-enterprise-10.2), [audit structuré 10.4](https://help.splunk.com/en/splunk-enterprise/administer/manage-users-and-security/10.4/audit-activity-in-splunk-enterprise/about-structured-audit-trail-logs).
 
 ## 10.2 puis 10.4 : KV Store sur MongoDB 8.0
 
