@@ -45,3 +45,4 @@ Chaque fiche reste générique et publiable.
 - [Mesurer la chronologie d'une recherche distribuée sans accès système aux indexeurs](./splunk-mesurer-chronologie-recherche-sans-acces-systeme.md)
 - [Le coût de présence des add-ons : ce que chaque recherche paie pour les objets de connaissance installés](./splunk-cout-presence-addons-parsing.md)
 - [Réintégrer un license peer sans pic de charge sur le License Manager](./splunk-licence-reintegration-peer-sans-pic.md)
+- [Operon pour Obsidian : assessment de code malveillant, version 4.7.0](./obsidian-operon-assessment-4.7.0.md)
