@@ -1,6 +1,6 @@
 # Gouvernance des usages Splunk — guide d'approche
 
-> 🇬🇧 **English version available**: [`./EN/README.md`](r_knowledge_base_pro/handbooks/gouvernance-utilisateurs-splunk/EN/README.md)
+> 🇬🇧 **English version available**: [`./EN/README.md`](./EN/README.md)
 
 > Guide d'approche pour mettre en place une gouvernance complète des usages
 > sur un Search Head Cluster (SHC) Splunk Enterprise de taille moyenne à
@@ -40,13 +40,16 @@ search est. Ce guide n'enseigne pas Splunk — il enseigne comment en
 - **Guides opérationnels** par axe (chapitres 5 à 7) : audit RBAC,
   conception RBAC progressive, audit WLM, conception WLM, volet indexers.
 - **Recommandations chiffrées** issues de l'état de l'art (chapitre 8).
+- **Principes clés du Workload Management** (chapitre 9) : fiche de
+  référence indépendante de la version, sourcée, avec sa
+  [version PDF](./PDF/09-wlm-principes-cles.pdf) en pièce jointe.
 
 ## Ce que ce guide ne couvre pas
 
 - L'installation et l'exploitation d'un SHC (`Distributed Deployment
   Manual` Splunk).
 - L'écriture de SPL au quotidien — voir le
-  [Splunk Power-User Handbook](r_knowledge_base_pro/handbooks/splunk-user-handbook/README.md) du même
+  [Splunk Power-User Handbook](../splunk-user-handbook/README.md) du même
   dépôt pour les bonnes pratiques côté analyste.
 - Les sujets cloud, SOAR, Observability, ES, ITSI.
 - Les détails d'intégration d'un IdP spécifique (ADFS, Azure AD, Okta) — on
@@ -72,6 +75,17 @@ configuration Search Head Cluster avec indexers mutualisés. Les findings
 empiriques portent l'étiquette 9.4.6 quand ils ont été observés. Si une
 version mineure ultérieure de la branche 9.4 modifie un comportement
 listé, le chapitre 4 le signalera.
+
+**Révision WLM du 2026-11-18.** Les chapitres 3, 4, 6, 7 et 8 ont été
+confrontés à la documentation Splunk 9.4 et 10.0, et le chapitre 9
+ajouté. Principales corrections : sémantique de `mem_weight` (plafond
+absolu, pas une part), contenu réel des catégories `ingest` et `misc`,
+absence de catégorie `search_peer` et de règles côté indexer,
+correspondance des pools SH ↔ indexers par leur nom, rechargement
+documenté des peers après bundle, syntaxe de plusieurs règles types.
+Chaque correction est signalée dans le chapitre concerné. La
+[version anglaise](./EN/README.md) n'intègre pas encore cette révision :
+pour le Workload Management, la version française fait foi.
 
 L'archétype visé est un SHC d'environ mille utilisateurs, applications
 découpées par production applicative, partageant des indexers avec
@@ -127,8 +141,9 @@ documentation, le chapitre 4 (findings) en porte la trace.
 | 4 | [Findings empiriques Splunk 9.4.6](04-findings-empiriques.md) | Comportements opposables vs documentation |
 | 5 | [Guide RBAC — audit, conception, déploiement](05-guide-rbac.md) | Audit, modèle hybride, paliers, SAML |
 | 6 | [Guide Workload Management — search heads](06-guide-wlm-sh.md) | Pools, règles, monitor-only, enforce |
-| 7 | [Guide Workload Management — indexers](07-guide-wlm-indexers.md) | Catégories `ingest`/`search_peer`, propagation cluster master |
+| 7 | [Guide Workload Management — indexers](07-guide-wlm-indexers.md) | Correspondance des pools par nom, protection de l'ingestion, propagation cluster manager |
 | 8 | [Recommandations chiffrées et annexes](08-recommandations-chiffrees.md) | Paliers, pourcentages, glossaire, SPL prêtes à l'emploi |
+| 9 | [Workload Management — principes clés](09-wlm-principes-cles.md) ([PDF](./PDF/09-wlm-principes-cles.pdf)) | Invariants CPU/mémoire, catégories, mode distribué, règles, pièges, retours terrain |
 
 ## Sources globales
 
@@ -143,5 +158,10 @@ Le guide s'appuie sur la documentation officielle Splunk 9.4 :
 - [Configure workload pools 9.4](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/9.4/configure-workload-management/configure-workload-pools)
 - [Configure workload rules 9.4](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/9.4/configure-workload-management/configure-workload-rules)
 - [Configure admission rules to prefilter searches 9.4](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/9.4/configure-workload-management/configure-admission-rules-to-prefilter-searches)
+- [How workload management works 10.0](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/10.0/workload-management-overview/how-workload-management-works)
+- [Configure workload management on distributed deployments 10.0](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/10.0/configure-workload-management/configure-workload-management-on-distributed-deployments)
+- [Monitor workload management using the monitoring console 10.0](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/10.0/monitor-workload-management)
+- [workload_pools.conf 10.0.4](https://help.splunk.com/en/splunk-enterprise/administer/admin-manual/10.0/configuration-file-reference/10.0.4-configuration-file-reference/workload_pools.conf), [workload_rules.conf 10.0.0](https://help.splunk.com/en/splunk-enterprise/administer/admin-manual/10.0/configuration-file-reference/10.0.0-configuration-file-reference/workload_rules.conf), [workload_policy.conf 10.0.1](https://help.splunk.com/en/splunk-enterprise/administer/admin-manual/10.0/configuration-file-reference/10.0.1-configuration-file-reference/workload_policy.conf)
+- Sources WLM complètes, dont retours d'expérience : [chapitre 9](./09-wlm-principes-cles.md#sources)
 - [Splunk Lantern — limit features that can impact platform performance](https://lantern.splunk.com/)
 - [NIST SP 800-63B — Digital Identity Guidelines](https://pages.nist.gov/800-63-3/sp800-63b.html) (cycle de vie IAM)

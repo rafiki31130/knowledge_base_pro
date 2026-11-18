@@ -204,28 +204,36 @@ la **ressource réellement consommée** par une recherche en cours.
 
 Le pattern recommandé pour un SHC sert mille utilisateurs :
 
-| Pool | `cpu_weight` | `mem_weight` | Vocation |
+| Pool | `cpu_weight` | `mem_weight` (plafond) | Vocation |
 | --- | --- | --- | --- |
-| `admin` | 15 | 15 | Réservé aux rôles admin pour qu'un incident n'empêche pas le diagnostic |
-| `scheduled` | 30 | 30 | Recherches planifiées (saved searches, alertes) |
-| `ad_hoc` | 35 | 35 | Recherches interactives des utilisateurs (`default_category_pool=1`) |
-| `bulk` | 10 | 10 | Recherches longues, exports, dashboards de production |
-| `accel` | 10 | 10 | Accélérations (data model accélérées, summary indexing) |
+| `admin` | 15 | 100 | Réservé aux rôles admin pour qu'un incident n'empêche pas le diagnostic |
+| `scheduled` | 30 | 100 | Recherches planifiées (saved searches, alertes) |
+| `ad_hoc` | 35 | 100 | Recherches interactives des utilisateurs (`default_category_pool=1`) |
+| `bulk` | 10 | 50 | Recherches longues, exports, dashboards de production |
+| `accel` | 10 | 100 | Accélérations (data model accélérées, summary indexing) |
+
+Les poids CPU sont des parts **relatives**, garanties en cas de
+contention ; les `mem_weight` sont des **plafonds** en pourcentage de
+la mémoire de la catégorie, pas des parts — d'où des valeurs qui ne
+somment pas à 100 ([chapitre 9](./09-wlm-principes-cles.md)).
 
 À cela s'ajoutent **deux pools default obligatoires** (`ingest_default`
 et `misc_default`) dans les catégories `ingest` et `misc` — sans eux,
-splunkd refuse d'activer WLM (finding empirique E1, chapitre 4).
+splunkd refuse d'activer WLM (finding F-WLM-01, chapitre 4). Ils ne
+sont pas symboliques : `ingest` porte splunkd, le KV store et Splunk
+Web ; on les laisse à 100/100.
 
-### Huit règles WLM priorisées
+### Règles WLM priorisées
 
 Les règles WLM combinent placement implicite (par rôle, par
 `search_type`, etc.) et actions de monitoring (`abort`, `move`,
 `alert`). L'ordre d'évaluation est strict et défini par
 `[workload_rules_order]` en first-match wins.
 
-Le détail des huit règles type, des chiffrages de pool et des findings
+Le détail des règles type, des chiffrages de pool et des findings
 9.4.6 est dans le **chapitre 6** (WLM search heads) et le **chapitre 7**
-(WLM indexers).
+(WLM indexers) ; les invariants qui les fondent sont au **chapitre 9**
+(principes clés WLM).
 
 ## 6. L'ordre de déploiement
 

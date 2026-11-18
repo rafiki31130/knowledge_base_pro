@@ -1,5 +1,10 @@
 # Chapter 4 — Splunk 9.4.6 empirical findings
 
+> **Revision pending (2026-11-18).** This chapter has been corrected in
+> the French canonical version, which is authoritative until this
+> translation is updated — see [the French chapter](../04-findings-empiriques.md) and
+> [chapitre 9 — principes clés WLM](../09-wlm-principes-cles.md).
+
 > This chapter consolidates the behaviors observed on Splunk
 > Enterprise 9.4.6 that **diverge** from the official documentation
 > or significantly refine it. Each finding is documented as:

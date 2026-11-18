@@ -1,5 +1,10 @@
 # Chapter 8 — Numeric recommendations, registry, glossary
 
+> **Revision pending (2026-11-18).** This chapter has been corrected in
+> the French canonical version, which is authoritative until this
+> translation is updated — see [the French chapter](../08-recommandations-chiffrees.md) and
+> [chapitre 9 — principes clés WLM](../09-wlm-principes-cles.md).
+
 > This chapter consolidates the numeric values proposed by the
 > handbook, the registry of dangerous behaviors that feed the
 > pedagogical loop, and the glossary. Every value carries the

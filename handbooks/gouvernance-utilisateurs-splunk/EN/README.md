@@ -1,6 +1,17 @@
 # Splunk Usage Governance — A Practitioner's Handbook
 
-> 🇫🇷 **Version française disponible** : [`../README.md`](r_knowledge_base_pro/handbooks/gouvernance-utilisateurs-splunk/README.md)
+> **Workload Management revision pending (2026-11-18).** The French
+> canonical version revised chapters 3, 4, 6, 7 and 8 against the Splunk
+> 9.4 / 10.0 documentation and added chapter 9 (WLM key principles,
+> with a PDF). Main corrections: `mem_weight` is an absolute ceiling per
+> category, not a share; the `ingest` category also runs splunkd, the KV
+> store and Splunk Web; there is no `search_peer` category and no
+> workload rule on indexers; search pools map between search heads and
+> indexers **by name**. Until this English version is updated, the
+> French chapters are authoritative for WLM:
+> [chapitre 9 — principes clés](../09-wlm-principes-cles.md).
+
+> 🇫🇷 **Version française disponible** : [`../README.md`](../README.md)
 
 > A handbook for establishing comprehensive usage governance on a medium-
 > to-large Splunk Enterprise Search Head Cluster (SHC), serving hundreds
@@ -70,7 +81,7 @@ to **govern** Splunk usage at scale.
 
 - Standing up and operating an SHC (`Distributed Deployment Manual`).
 - Day-to-day SPL writing — see the
-  [Splunk Power-User Handbook](r_knowledge_base_pro/handbooks/splunk-user-handbook/README.md)
+  [Splunk Power-User Handbook](../../splunk-user-handbook/README.md)
   in this repo for analyst-side good practices.
 - Cloud, SOAR, Observability, ES, or ITSI topics.
 - Integration details for any specific IdP (ADFS, Entra ID, Okta) —

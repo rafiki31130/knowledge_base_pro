@@ -1,5 +1,10 @@
 # Chapter 6 — Workload Management guide: search heads
 
+> **Revision pending (2026-11-18).** This chapter has been corrected in
+> the French canonical version, which is authoritative until this
+> translation is updated — see [the French chapter](../06-guide-wlm-sh.md) and
+> [chapitre 9 — principes clés WLM](../09-wlm-principes-cles.md).
+
 > This chapter is the full operational guide for Workload Management
 > on the Search Head side. It covers WLM concepts, the audit of the
 > existing state, pool design, progressive implementation with its

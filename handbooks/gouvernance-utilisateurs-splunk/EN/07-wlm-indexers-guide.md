@@ -1,5 +1,10 @@
 # Chapter 7 — Workload Management guide: indexers and distributed mode
 
+> **Revision pending (2026-11-18).** This chapter has been corrected in
+> the French canonical version, which is authoritative until this
+> translation is updated — see [the French chapter](../07-guide-wlm-indexers.md) and
+> [chapitre 9 — principes clés WLM](../09-wlm-principes-cles.md).
+
 > This chapter covers WLM **on the indexer side**, complementing
 > chapter 6 which covers the Search Head side. It addresses the
 > concepts specific to distributed mode, the design of indexer

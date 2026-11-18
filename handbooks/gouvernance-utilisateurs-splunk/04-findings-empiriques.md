@@ -379,9 +379,16 @@ prévoir **sept pools** :
 - un pool default dans `ingest` (`ingest_default`) ;
 - un pool default dans `misc` (`misc_default`).
 
-Les deux pools default des catégories non métier reçoivent un poids
-minimal (1 % chacun en `cpu_weight` et `mem_weight`) ; ils existent
-seulement pour permettre l'activation.
+**Erratum 2026-11-18.** La version initiale recommandait un poids
+minimal (1 %) pour ces deux pools, « qui existent seulement pour
+permettre l'activation ». C'est à proscrire : la catégorie `ingest`
+héberge splunkd, le KV store, l'app server et l'introspection, et
+`misc` les inputs scriptés et modulaires
+([How workload management works 10.0](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/10.0/workload-management-overview/how-workload-management-works)).
+Le `mem_weight` d'un pool étant un plafond absolu en pourcentage de sa
+catégorie, `mem_weight = 1` plafonnerait splunkd à 1 % de la mémoire
+`ingest`. Ces pools uniques se configurent à `cpu_weight = 100` et
+`mem_weight = 100` ([chapitre 9 §3 et §5](./09-wlm-principes-cles.md#3-ce-que-contient-chaque-catégorie)).
 
 ### F-WLM-02 — Placement implicite, pas `action=workload_pool`
 
@@ -432,10 +439,24 @@ tourne, un message est affiché.
 are `move`, `abort`, `alert`, `filter`, and `queue` ». La valeur
 `display_message` **n'existe pas** en 9.4.6.
 
-**Équivalent fonctionnel.** `action = alert`. La recherche continue,
-un événement est écrit dans `_audit`, un message structuré apparaît
-dans le job inspector. C'est l'équivalent natif d'un **mode
+**Équivalent fonctionnel.** `action = alert`. La recherche continue et
+une notification est émise. C'est l'équivalent natif d'un **mode
 monitor-only par règle**.
+
+**Confrontation à la documentation (2026-11-18).** Le finding est
+conforme à la spec : `workload_rules.conf` 10.0 n'accepte que `alert`,
+`move` et `abort` comme actions de workload rule
+([spec 10.0](https://help.splunk.com/en/splunk-enterprise/administer/admin-manual/10.0/configuration-file-reference/10.0.0-configuration-file-reference/workload_rules.conf)).
+*Display a Message* est le **libellé Splunk Web** de cette même action
+([Configure workload rules 10.0](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/10.0/configure-workload-management/configure-workload-rules)) :
+d'où la confusion. Deux précisions remplacent l'affirmation initiale
+sur l'événement `_audit`, non documentée : le message n'est visible
+dans le job inspector que des utilisateurs qui détiennent les
+capabilities `list_workload_pools`, `edit_workload_pools`,
+`list_workload_rules` et `select_workload_rules` ; les déclenchements
+se comptent dans le tableau de bord *Workload Management Monitoring* de
+la Monitoring Console
+([Monitor WLM 10.0](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/10.0/monitor-workload-management)).
 
 **Conséquence pour la gouvernance.** **Tout** déploiement
 monitor-only WLM utilise `action = alert`. Toute documentation
@@ -469,7 +490,15 @@ parenthèses**. Une chaîne avec parenthèses fait rejeter la règle.
 parenthèses. Utiliser deux-points ou tirets pour structurer si
 besoin.
 
-### F-WLM-07 — Hot-reload côté search head, restart côté indexer
+**Confrontation à la documentation (2026-11-18).** La spec 10.0 ne
+fixe que la longueur maximale (140 caractères) et aucune restriction
+de caractères
+([workload_rules.conf 10.0](https://help.splunk.com/en/splunk-enterprise/administer/admin-manual/10.0/configuration-file-reference/10.0.0-configuration-file-reference/workload_rules.conf)).
+La restriction sur les parenthèses reste une observation de lab 9.4.6,
+à revérifier sur la version déployée. Pour une recherche planifiée
+filtrée, le message n'apparaît que dans `scheduler.log`.
+
+### F-WLM-07 — Hot-reload côté search head ; côté indexer, reload documenté
 
 **Observation.** Sur un search head, modifier `workload_pools.conf`
 ou `workload_rules.conf` puis appeler
@@ -477,14 +506,23 @@ ou `workload_rules.conf` puis appeler
 sans interruption.
 
 Sur un peer indexer en cluster, la propagation passe par le **cluster
-master** (`splunk apply cluster-bundle`) qui **redémarre les peers**
-(rolling restart). Pas de hot-reload côté indexer pour les bundles
-WLM.
+manager** (`splunk apply cluster-bundle`).
 
-**Conséquence pour la gouvernance.** Sur un search head, le cycle
-d'itération est rapide (modification + reload). Sur un cluster
-d'indexers, chaque modification de bundle WLM implique un rolling
-restart — à planifier hors heures critiques.
+**Révision 2026-11-18.** La version initiale affirmait que tout bundle
+WLM **redémarrait** les peers, sans hot-reload possible. La
+documentation dit l'inverse : après distribution du bundle, les peers
+**rechargent** automatiquement `workload_pools.conf`, et
+`workload_rules.conf` n'a pas à être poussé sur les indexers
+([Distributed deployments 10.0](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/10.0/configure-workload-management/configure-workload-management-on-distributed-deployments)).
+La spec de `workload_pools.conf` admet qu'un redémarrage *peut* être
+nécessaire
+([workload_pools.conf 10.0](https://help.splunk.com/en/splunk-enterprise/administer/admin-manual/10.0/configuration-file-reference/10.0.4-configuration-file-reference/workload_pools.conf)),
+et le lab en a eu besoin à la première activation (F-WLM-08).
+
+**Conséquence pour la gouvernance.** Isoler la conf WLM dans une app
+dédiée, valider chaque bundle avec `splunk validate cluster-bundle
+--check-restart`, et réserver une fenêtre de rolling restart pour la
+**première** activation seulement.
 
 ### F-WLM-08 — Restart Splunkd doit être en root direct
 
@@ -532,10 +570,10 @@ jusque dans la couche ACL.
 | F-WLM-01 | WLM | Chaque catégorie (`search`, `ingest`, `misc`) exige un `default_category_pool=1` |
 | F-WLM-02 | WLM | Placement implicite via `workload_pool=`, pas `action=workload_pool` |
 | F-WLM-03 | WLM | `runtime>` obligatoire pour les actions de monitoring (`abort`/`move`/`alert`) |
-| F-WLM-04 | WLM | `action=display_message` n'existe pas ; utiliser `action=alert` |
+| F-WLM-04 | WLM | `action=display_message` n'existe pas ; utiliser `action=alert` (libellé UI *Display a Message*, visible des seuls admins WLM) |
 | F-WLM-05 | WLM | `[workload_rules_order]` n'accepte que les `[workload_rule:*]` |
-| F-WLM-06 | WLM | `user_message` : ~140 chars, pas de parenthèses |
-| F-WLM-07 | WLM | Hot-reload côté SH ; restart côté indexer via cluster-bundle |
+| F-WLM-06 | WLM | `user_message` : 140 chars (spec) ; parenthèses rejetées en lab 9.4.6 |
+| F-WLM-07 | WLM | Hot-reload côté SH ; côté indexer, reload documenté après bundle, restart possible à la première activation |
 | F-WLM-08 | WLM | Restart Splunkd en root direct (`systemctl`), pas via `runuser` |
 | F-ACL-01 | ACL | Héritage actif des ACL d'objets via `importRoles` |
 

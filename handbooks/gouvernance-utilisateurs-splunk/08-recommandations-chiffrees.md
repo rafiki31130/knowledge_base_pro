@@ -44,50 +44,67 @@
 
 ## 2. Pourcentages de pool WLM côté Search Head
 
+> **Révision 2026-11-18.** Valeurs alignées sur la sémantique documentée
+> de WLM : poids CPU **relatifs** (parts garanties en contention),
+> `mem_weight` **plafonds absolus** par catégorie (ni garantis ni
+> empruntables). Détail : [chapitre 9](./09-wlm-principes-cles.md).
+
 ### Table de référence
 
-Catégorie `search` à 80 % du CPU/RAM total, `ingest` à 15 %, `misc` à
-5 %.
+Catégories au point de départ documenté : `search` 70 %, `ingest`
+20 %, `misc` 10 %.
 
-| Pool | `cpu_weight` | `mem_weight` | `default_category_pool` |
+| Pool | `cpu_weight` | `mem_weight` (plafond) | `default_category_pool` |
 | --- | --- | --- | --- |
-| `admin` | 15 | 15 | 0 |
-| `scheduled` | 30 | 30 | 0 |
-| `ad_hoc` | 35 | 35 | **1** |
-| `bulk` | 10 | 10 | 0 |
-| `accel` | 10 | 10 | 0 |
-| `ingest_default` | 1 | 1 | **1** |
-| `misc_default` | 1 | 1 | **1** |
+| `admin` | 15 | 100 | 0 |
+| `scheduled` | 30 | 100 | 0 |
+| `ad_hoc` | 35 | 100 | **1** |
+| `bulk` | 10 | 50 | 0 |
+| `accel` | 10 | 100 | 0 |
+| `ingest_default` | 100 | 100 | **1** |
+| `misc_default` | 100 | 100 | **1** |
 
 ### Critères d'adaptation
 
-- **Si le pool `scheduled` sature** régulièrement, augmenter sa part —
-  ou mieux, étaler la planification côté saved searches.
-- **Si `ad_hoc` est sous pression** (B.3.02), augmenter sa part à
-  40-45 % aux dépens de `scheduled`.
-- **Le pool `admin`** ne doit jamais descendre en dessous de 10-15 % —
-  c'est ce qui garantit qu'un admin peut diagnostiquer une saturation.
-- **Pour un cluster à GPU pour accélération** : augmenter `accel` à
-  15-20 % et bien isoler le pool.
+- **Si le pool `scheduled` sature** régulièrement en CPU, augmenter sa
+  part — ou mieux, étaler la planification côté saved searches.
+- **Si `ad_hoc` est sous pression CPU**, augmenter sa part à 40-45 %
+  aux dépens de `scheduled`.
+- **Le pool `admin`** garde une part CPU d'au moins 10-15 %. Pour lui
+  **garantir de la mémoire**, plafonner les autres pools (par exemple
+  `ad_hoc` et `scheduled` à 80) : un `mem_weight` ne réserve rien.
+- **Ne réduire la catégorie `ingest`** sur un search head qu'après
+  mesure : elle porte splunkd, le KV store et Splunk Web.
+- **Relever `misc`** (20-30 %) sur un search head qui exécute des
+  inputs d'add-ons.
 
 ## 3. Pourcentages de pool WLM côté indexer
 
 ### Table de référence
 
-| Pool | Catégorie | `cpu_weight` / `mem_weight` |
-| --- | --- | --- |
-| `ingest_default` | ingest | 70 / 70 |
-| `ingest_priority` | ingest | 20 / 20 |
-| `ingest_bulk` | ingest | 10 / 10 |
-| `search_peer_default` | search_peer | 100 / 100 |
-| `misc_default` | misc | 100 / 100 |
+Catégories : `search` 60 %, `ingest` 30 %, `misc` 10 %. Les noms des
+pools `search` reprennent ceux des search heads (préfixés par SHC) ;
+il n'existe ni catégorie `search_peer`, ni pools `ingest` multiples
+([chapitre 7 §2](./07-guide-wlm-indexers.md#2-concepts-spécifiques)).
+
+| Pool | Catégorie | `cpu_weight` | `mem_weight` (plafond) |
+| --- | --- | --- | --- |
+| `idx_default_unmapped` (défaut, témoin) | search | 10 | 100 |
+| `<shc>_admin` | search | 10 | 100 |
+| `<shc>_scheduled` | search | 30 | 100 |
+| `<shc>_ad_hoc` | search | 30 | 100 |
+| `<shc>_bulk` | search | 10 | 50 |
+| `<shc>_accel` | search | 10 | 100 |
+| `ingest_default` | ingest | 100 | 100 |
+| `misc_default` | misc | 100 | 100 |
 
 ### Critères d'adaptation
 
-- **Si les sourcetypes sensibles** représentent plus de 20 % du volume
-  d'ingestion, augmenter `ingest_priority` à 30 %.
-- **`ingest_bulk` reste contraint** délibérément — c'est ce qui
-  protège l'ingestion sensible quand un dump bulk arrive.
+- **Le plafond mémoire de la catégorie `search`** protège l'ingestion :
+  le fixer d'après les pics mémoire des recherches distantes, en
+  laissant à `ingest` la marge de ses propres pics.
+- **Plusieurs SHC** : répéter les pools par préfixe et répartir les
+  poids CPU selon la priorité métier de chaque SHC.
 
 ## 4. Durées de monitor-only
 
@@ -97,7 +114,7 @@ Catégorie `search` à 80 % du CPU/RAM total, `ingest` à 15 %, `misc` à
 | --- | --- | --- |
 | RBAC — bascule des composites | 1 à 2 semaines | Capter un cycle hebdo de saved searches |
 | WLM Search Head — `alert` | 2 à 4 semaines | Capter un cycle mensuel (clôture, reporting) |
-| WLM Indexer — `alert` | 2 à 4 semaines | Capter la variabilité d'ingestion (cycles métier) |
+| WLM Indexer — observation (pools larges, pas de règles côté indexer) | 2 à 4 semaines | Capter la variabilité d'ingestion (cycles métier) |
 | Sensibilisation — vague pilote | 4 semaines | Mesurer le taux de récidive (K1) |
 
 ### Critères d'extension
@@ -391,10 +408,10 @@ Cible D-21.
 | **ACL** | Access Control List des knowledge objects, vit dans les metadata, hors `authorize.conf`. |
 | **Knowledge object** | Saved search, dashboard, datamodel, macro, lookup, eventtype. |
 | **Cycle de vie SAML** | Politique de désactivation après 90 j d'inactivité + hard delete après 90 j de quarantaine, avec traitement des KO orphelins. |
-| **Pool WLM** | Enveloppe de ressources CPU / mémoire par cgroup. |
-| **Catégorie WLM** | `search` / `ingest` / `misc` (+ `search_peer` côté indexer). |
+| **Pool WLM** | Enveloppe de ressources CPU / mémoire par cgroup. CPU : poids relatif, plafond souple. Mémoire : plafond absolu en % de la catégorie. |
+| **Catégorie WLM** | `search` / `ingest` / `misc` — trois catégories seulement, sur toute instance. `ingest` porte aussi splunkd, le KV store et Splunk Web ; `misc` les inputs scriptés et modulaires. |
 | **Admission rule** | `[search_filter_rule:*]`. Évaluée avant exécution. Actions : `filter`, `queue`. |
-| **Workload rule** | `[workload_rule:*]`. Placement + monitoring. Actions : placement implicite, `move`, `abort`, `alert`. |
+| **Workload rule** | `[workload_rule:*]`. Évaluée sur le search head. Placement + monitoring. Actions : placement implicite, `move`, `abort`, `alert` (libellé UI *Display a Message*). |
 | **`default_category_pool`** | Pool par défaut d'une catégorie. Obligatoire pour chaque catégorie. |
 | **Cgroup** | Mécanisme Linux d'isolation des ressources. C'est ce qui applique réellement les pools. |
 | **Cluster master** | Nœud de coordination du cluster d'indexers. Source de vérité de la configuration des peers. |
@@ -411,6 +428,9 @@ Cible D-21.
 - [server.conf spec 9.4](https://help.splunk.com/en/data-management/splunk-enterprise-admin-manual/9.4/configuration-file-reference/9.4.5-configuration-file-reference/server.conf)
 - [SAML SSO 9.4](https://help.splunk.com/en/splunk-enterprise/administer/manage-users-and-security/9.4/use-saml-as-an-authentication-scheme-for-single-sign-on)
 - [Workload Management 9.4](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/9.4)
+- [How workload management works 10.0](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/10.0/workload-management-overview/how-workload-management-works)
+- [workload_pools.conf 10.0.4](https://help.splunk.com/en/splunk-enterprise/administer/admin-manual/10.0/configuration-file-reference/10.0.4-configuration-file-reference/workload_pools.conf)
+- [Principes clés WLM — chapitre 9 de ce guide](./09-wlm-principes-cles.md)
 - [Indexer Clusters 9.4](https://help.splunk.com/en/splunk-enterprise/administer/manage-indexers-and-indexer-clusters/9.4)
 - [Splunk Validated Architectures](https://docs.splunk.com/Documentation/Splunk/latest/Architecture/WhatisaSplunkValidatedArchitecture)
 - [Splunk Lantern](https://lantern.splunk.com/)
