@@ -43,6 +43,8 @@ search est. Ce guide n'enseigne pas Splunk — il enseigne comment en
 - **Principes clés du Workload Management** (chapitre 9) : fiche de
   référence indépendante de la version, sourcée, avec sa
   [version PDF](./PDF/09-wlm-principes-cles.pdf) en pièce jointe.
+- **Couche système du Workload Management** (chapitre 10) : cgroups v1/v2,
+  unité systemd, cohabitation des deux modes dans un cluster d'indexers.
 
 ## Ce que ce guide ne couvre pas
 
@@ -144,6 +146,7 @@ documentation, le chapitre 4 (findings) en porte la trace.
 | 7 | [Guide Workload Management — indexers](07-guide-wlm-indexers.md) | Correspondance des pools par nom, protection de l'ingestion, propagation cluster manager |
 | 8 | [Recommandations chiffrées et annexes](08-recommandations-chiffrees.md) | Paliers, pourcentages, glossaire, SPL prêtes à l'emploi |
 | 9 | [Workload Management — principes clés](09-wlm-principes-cles.md) ([PDF](./PDF/09-wlm-principes-cles.pdf)) | Invariants CPU/mémoire, catégories, mode distribué, règles, pièges, retours terrain |
+| 10 | [Workload Management — couche système et cohabitation cgroups v1/v2](10-wlm-systeme-cohabitation-cgroups.md) | Détection de la version de cgroups, unité systemd, différences noyau v1/v2, parcs mixtes, visibilité |
 
 ## Sources globales
 

@@ -26,6 +26,8 @@ WLM s'appuie sur les **cgroups Linux** : il ne fonctionne que sous
 Linux, et les cgroups doivent être en place avant toute configuration
 ([How WLM works 10.0][how-10]). En pratique, splunkd doit tourner comme
 service systemd avec délégation des cgroups ([TekStream][tekstream]).
+Version de cgroups, unité systemd et parcs mixtes v1/v2 :
+[chapitre 10](./10-wlm-systeme-cohabitation-cgroups.md).
 
 ## 2. La hiérarchie à trois niveaux
 

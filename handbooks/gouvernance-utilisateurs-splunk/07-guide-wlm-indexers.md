@@ -194,6 +194,9 @@ Avant de poser une conf WLM côté indexers, cartographier :
    délégation systemd des cgroups, limite mémoire éventuelle de l'unité
    systemd — c'est elle, et non la RAM physique, qui sert de base aux
    pourcentages ([chapitre 9 §2](./09-wlm-principes-cles.md#2-la-hiérarchie-à-trois-niveaux)).
+   Mode de cgroups de chaque peer, maintenant et au prochain démarrage,
+   et cas d'un parc mixte v1/v2 :
+   [chapitre 10](./10-wlm-systeme-cohabitation-cgroups.md).
 3. **Pression d'ingestion actuelle** : R.I.03 et R.I.04 ci-dessous, par
    peer.
 4. **Pics mémoire des recherches distantes** par peer, à partir des
