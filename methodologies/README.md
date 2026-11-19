@@ -34,3 +34,7 @@ abstraits, sans cas réel.
 ### Management
 
 - [Management : motivation, rôles managériaux et discipline d'équipe](./management-motivation-discipline.md)
+
+### Documentation technique
+
+- [ASD-STE100 — Simplified Technical English (STE)](./asd-ste100-simplified-technical-english.md) (EN) : anglais contrôlé pour la documentation technique — règles, dictionnaire, limites, application aux runbooks
