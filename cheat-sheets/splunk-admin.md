@@ -1,7 +1,12 @@
 ---
 title: Splunk (administration / CLI)
 category: cheat-sheets
-tags: [splunk, siem, cli, administration, cheat-sheet]
+tags:
+  - splunk
+  - siem
+  - cli
+  - administration
+  - cheat-sheet
 created: 2026-06-08
 ---
 

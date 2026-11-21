@@ -1,7 +1,16 @@
 ---
 title: Splunk — détecter les erreurs d'authentification et d'autorisation en SHC
 category: cheat-sheets
-tags: [splunk, shc, authorize, authentication, rbac, troubleshooting, spl, audit, cheat-sheet]
+tags:
+  - splunk
+  - shc
+  - authorize
+  - authentication
+  - rbac
+  - troubleshooting
+  - spl
+  - audit
+  - cheat-sheet
 created: 2026-08-14
 ---
 

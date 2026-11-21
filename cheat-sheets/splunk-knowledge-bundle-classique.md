@@ -1,7 +1,13 @@
 ---
 title: Splunk — knowledge bundle (réplication classique)
 category: cheat-sheets
-tags: [splunk, distsearch, knowledge-bundle, shc, replication, cheat-sheet]
+tags:
+  - splunk
+  - distsearch
+  - knowledge-bundle
+  - shc
+  - replication
+  - cheat-sheet
 created: 2026-06-18
 ---
 

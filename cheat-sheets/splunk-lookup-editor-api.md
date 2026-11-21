@@ -1,7 +1,14 @@
 ---
 title: Splunk Lookup Editor - API REST
 category: cheat-sheets
-tags: [splunk, lookup, lookup-editor, rest, rbac, shc, cheat-sheet]
+tags:
+  - splunk
+  - lookup
+  - lookup-editor
+  - rest
+  - rbac
+  - shc
+  - cheat-sheet
 created: 2026-09-26
 ---
 

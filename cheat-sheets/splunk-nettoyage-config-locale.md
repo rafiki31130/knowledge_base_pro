@@ -1,7 +1,16 @@
 ---
 title: Splunk — nettoyer une configuration locale (REST, purge, suppression, reload)
 category: cheat-sheets
-tags: [splunk, rest-api, configuration, local, purge, reload, acl, metadata, cheat-sheet]
+tags:
+  - splunk
+  - rest-api
+  - configuration
+  - local
+  - purge
+  - reload
+  - acl
+  - metadata
+  - cheat-sheet
 created: 2026-08-14
 ---
 

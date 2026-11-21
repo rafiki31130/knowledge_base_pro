@@ -1,7 +1,13 @@
 ---
 title: Mermaid dans Obsidian
 category: cheat-sheets
-tags: [obsidian, mermaid, diagrammes, markdown, documentation, cheat-sheet]
+tags:
+  - obsidian
+  - mermaid
+  - diagrammes
+  - markdown
+  - documentation
+  - cheat-sheet
 created: 2026-06-09
 ---
 

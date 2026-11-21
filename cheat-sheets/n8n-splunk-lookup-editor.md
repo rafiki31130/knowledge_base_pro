@@ -1,7 +1,13 @@
 ---
 title: n8n - piloter une lookup Splunk via Lookup Editor
 category: cheat-sheets
-tags: [n8n, splunk, lookup, lookup-editor, rest, cheat-sheet]
+tags:
+  - n8n
+  - splunk
+  - lookup
+  - lookup-editor
+  - rest
+  - cheat-sheet
 created: 2026-09-26
 ---
 

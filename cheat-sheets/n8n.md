@@ -1,7 +1,13 @@
 ---
 title: n8n
 category: cheat-sheets
-tags: [n8n, automatisation, workflow, no-code, webhook, cheat-sheet]
+tags:
+  - n8n
+  - automatisation
+  - workflow
+  - no-code
+  - webhook
+  - cheat-sheet
 created: 2026-07-06
 ---
 
