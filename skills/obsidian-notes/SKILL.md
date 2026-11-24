@@ -34,6 +34,7 @@ un log est perdue, un inventaire éclaté en cinq fleeting notes devient inexplo
 | Action à faire, avec suivi ou échéance | Tâche `#Todo` | [Tâche](#tâche) |
 | Étapes locales d'une note, sans suivi global | Checklist locale | [Checklist locale](#checklist-locale) |
 | Item réutilisable par contexte (courses, matos) | Liste `#list/` | [Liste #list/](#liste-list) |
+| Sujet durable sans fin (domaine, pièce, thème) ; « qu'est-ce qu'il reste à faire ici ? » | Page Topic | [Page Topic](#page-topic) |
 | Événement daté, observation ponctuelle | Log | [Log du journal](#log-du-journal) |
 
 ### Destination par défaut : le journal du jour
@@ -54,6 +55,31 @@ conversation, l'information utile s'y noie.
 
 Corollaire : un satellite non relié est un satellite perdu. Fleeting note → `page_path` ;
 tâche → `project`.
+
+### Rattachement : `parent`, `topic`, `relations`
+
+Trois propriétés, trois sens distincts. Ne les interchange pas, même quand une vue affiche
+le même résultat avec l'une ou l'autre.
+
+| Propriété | Sens | Exemple |
+|---|---|---|
+| `parent` (ou titre `Parent @ Enfant`) | Hiérarchie structurelle : sous-projet, sous-page | `Travaux @ SDB @ Plafond spots` → parent `Travaux @ SDB` |
+| `topic` | Domaine d'appartenance : « où vit ce sujet ». Réponse à « qu'est-ce que j'ai en cours dans ce domaine ? » | Projet SDB → `topic: ["[[Maison]]", "[[Maison @ SalleDeBain]]"]` |
+| `relations` | Lien transversal entre deux sujets qui se touchent : à traiter ensemble, achat groupé, impact croisé | Peinture SDB ↔ peinture cage d'escalier ; carrelage SDB ↔ crédence cuisine |
+
+Règles :
+- **`topic` liste toujours le Topic enfant ET ses Topics parents** (`[[Maison]]` +
+  `[[Maison @ SalleDeBain]]`) : chaque niveau affiche alors le projet dans sa vue
+  `Relations.base`.
+- **`relations` n'exprime jamais l'appartenance à un domaine.** Pointer un projet vers sa pièce
+  via `relations` est une erreur de sens : migre-le vers `topic`. Une relation se pose dans les
+  deux sens (les deux projets se citent).
+- Contre-exemple : « en peignant la SDB, je toucherai à l'entrée » n'est pas une relation entre
+  projets mais un rappel : une ligne de checklist dans le lot concerné, qui renvoie par wikilink
+  vers l'item source (écrit à un seul endroit).
+
+Mécanique utile : `Relations.base` (corps des Topics) se fonde sur `topic` ; le bloc dataviewjs
+`related-projects` se fonde sur `parent` / nommage `@` et `relations`, pas sur `topic`.
 
 ### Séquence de travail
 
@@ -87,6 +113,14 @@ Les templates sont la source de vérité du frontmatter, et les valeurs autoris�
 frontmatter, même correctement titré. Passe donc par l'outil métier qui déclenche Templater
 (`create_project`, `journal_open_or_create`), ou par `patch_frontmatter` pour modifier un
 champ existant.
+
+Deux exceptions, où le frontmatter s'écrit à la main **en recopiant le template de type**
+(`r_templates/templates/type_*.md`) et les valeurs de `r_templates/properties/` :
+- **Page Topic** : aucun outil métier ne la crée (cf. [Page Topic](#page-topic)).
+- **Échec de `create_project`** (cf. [Page projet](#page-projet)).
+
+Quel que soit l'outil, la **première ligne du corps reste vide** après le `---` de fermeture :
+le curseur s'y place à l'ouverture et masquerait sinon le premier callout.
 
 ### Après écriture : signaler la sync
 
@@ -133,8 +167,32 @@ chemin ; `parent` produit `Parent @ Enfant.md`. L'outil applique le template Tem
 `patch_frontmatter`. Ne crée jamais une page projet par `vault_write` : sans template, elle
 n'apparaît ni dans `get_active_projects` ni dans la base `🛠️Projets`.
 
-**Structure du corps** — le template ne pose que le frontmatter, aucune section. Le corps est
-donc libre : n'impose pas un canevas, lis les headings existants avec
+**Échec de `create_project`** — si la commande Templater répond 404, le fichier est quand même
+créé, vide (`# <name>`), à la racine de `pages/`. Ne relance pas (doublon) : complète ce même
+fichier par `vault_write` avec le frontmatter projet (`type: Projet`, `statut`, `parent`,
+`topic`, `relations`) et les blocs standard du corps (ci-dessous). L'outil n'écrit jamais dans
+`pages/1. Projets/` et aucun outil ne déplace un fichier entre dossiers : signale-le à
+l'utilisateur, qui le rangera lui-même.
+
+**Rattachement** — tout projet porte `topic:` (Topic enfant + Topics parents) en plus de son
+`parent` éventuel. Cf. [Rattachement](#rattachement--parent-topic-relations).
+
+**Champs Operon** (`status: Project.*`, `operonId`, `parentTask`, `taskType`, compteurs
+`*SubtaskCount`, `progress`) — test de plugin, considérés comme du bruit : ne pas s'en servir
+comme statut, ne pas les supprimer non plus. `type: Projet` + `statut` font foi. Une page créée
+par Operon n'a souvent ni `type: Projet` ni `statut` : elle est invisible dans
+`get_active_projects` et dans les vues des Topics tant qu'on ne les ajoute pas par
+`patch_frontmatter`.
+
+**Projet ou checklist ?** — un projet seulement pour un lot à plusieurs étapes avec une fin
+identifiable. Une finition unitaire (poser une prise, changer un joint de porte) est une ligne
+de checklist dans le `Reste à faire` du Topic concerné, pas un projet.
+
+**Structure du corps** — le corps type (projets et Topics) enchaîne, après la ligne vide :
+`` `button-applytype` `button-archive` ``, les trois callouts dataviewjs
+(`r_templates/scripts/related-projects`, `child-pages`, `related-tasks`), puis `## Notes`.
+Recopie-les d'une page existante quand tu écris un corps à la main. Au-delà, le corps est
+libre : n'impose pas un canevas, lis les headings existants avec
 `vault_get_document_map` et écris dans la section qui convient. Si aucune ne convient, crée un
 heading de niveau 2 au nom parlant plutôt que d'entasser en fin de page.
 
@@ -154,6 +212,30 @@ gravite autour. Ne lis la page entière que si le contenu rédactionnel est néc
 
 ---
 
+## Page Topic
+
+**Ce que c'est** — un sujet entretenu sans date de fin : domaine (`Maison`, `Santé`) sous
+`pages/2. Domaines/`, ou sous-domaine / objet (`Maison @ Cuisine`) sous `pages/3. Ressources/`.
+Les Topics s'emboîtent : une pièce est un Topic enfant du Topic `Maison` (`parent: "[[Maison]]"`).
+C'est la page qu'on ouvre pour savoir **ce qu'il y a à faire à un endroit** ; la page projet
+dit **où on en est** sur un chantier.
+
+**Frontmatter** — `type: Topic`, `topic:` = la page elle-même **puis** ses Topics parents
+(`["[[Maison @ Cuisine]]", "[[Maison]]"]`), `parent` si enfant.
+
+**Corps** — ligne vide, `![[Relations.base]]`, blocs standard, puis trois sections :
+- `## Notes` : contexte stable, renvoi vers le projet hub du sujet s'il existe ;
+- `## Reste à faire` : checklist locale des finitions unitaires du lieu (pas de `#Todo`) ;
+  un item suivi dans un projet y figure en renvoi (`→ [[Projet]]`), pas en double ;
+- `## Idées / plus tard` : sous-projets envisagés mais non lancés, une ligne chacun. Une idée
+  lancée devient un projet (`topic` vers ce Topic) et sa ligne disparaît.
+
+**Créer** — pas d'outil métier : `vault_write` avec le frontmatter recopié de
+`r_templates/templates/type_Topic.md` complété comme ci-dessus. **Convertir** une page
+existante : `patch_frontmatter` (`type`, `topic`), puis ajout des sections.
+
+---
+
 ## Page libre
 
 **Ce que c'est** — une note sous `pages/` sans `type: Projet` : documentation, note de fond,
@@ -163,7 +245,8 @@ référence. Pas de frontmatter obligatoire — seulement ce qui est utile (`tag
 donc pas de frontmatter généré ; c'est acceptable pour une page libre, contrairement à un
 projet.
 
-**Hiérarchie** — `pages/` n'a pas de sous-dossiers : la hiérarchie s'exprime par le titre
+**Hiérarchie** — `pages/` est rangé par grands types (`1. Projets/`, `2. Domaines/`,
+`3. Ressources/`, `4. Archives/`), sans arborescence de sujet : la hiérarchie s'exprime par le titre
 `Parent @ Enfant` ou par le frontmatter `parent: "[[Parent]]"`. L'une ou l'autre forme suffit.
 Via MCP, pose-la toi-même dans le titre du fichier au moment de la création.
 
@@ -299,6 +382,7 @@ Racine du vault : `pages/`, `journals/`, `fleeting/`, `attachments/`, `bases/`, 
 | `r_templates/` | **Lecture seule** — refusé en écriture |
 
 Garde-fous du serveur : pas de fichier à la racine, pas de nouveau dossier de premier niveau,
-et seul `r_wiki/` accepte de nouveaux sous-dossiers — y compris `pages/`, qui reste plat par
-convention (la hiérarchie passe par le nommage `Parent @ Enfant`). Ailleurs, le dossier parent
+et seul `r_wiki/` accepte de nouveaux sous-dossiers — pas `pages/`, dont les sous-dossiers
+existants (`1. Projets/` … `4. Archives/`) restent utilisables (la hiérarchie de sujet passe par le
+nommage `Parent @ Enfant`). Ailleurs, le dossier parent
 doit déjà exister.
