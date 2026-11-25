@@ -1,5 +1,8 @@
 # Chapter 5 — RBAC guide: audit, design, deployment
 
+> **Historical 9.4.6 chapter, not the current governance edition.**
+> Governance: [synthesis 2.0 (French)](../synthese/README.md) and [topic/version mapping](../README.md#table-des-matières).
+
 > This chapter is the full operational guide for the authorization
 > work. It covers pre-rebuild audit of an existing SHC, the design
 > of the hybrid atomic/composite model, the SAML articulation, the

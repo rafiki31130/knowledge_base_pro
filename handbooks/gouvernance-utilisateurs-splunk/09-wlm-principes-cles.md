@@ -1,5 +1,9 @@
 # Chapitre 9 — Workload Management : principes clés
 
+> **Fiche WLM historique du 18 novembre 2026** (références 9.4/10.0 et complémentaires), pas une procédure actuelle ni une garantie interversion. Le PDF lié reste inchangé.
+> Gouvernance : [synthèse 2.0](./synthese/README.md) ; [correspondance sujet/version](./README.md#table-des-matières).
+> Mise en place WLM : [chapitre configuration du handbook autonome](../splunk-wlm-configuration/02-configurer-wlm.md), dans son périmètre 10.4.5 ; exécution 10.2 non qualifiée. Ne pas combiner les anciennes étapes avec cette procédure.
+
 > Fiche de référence **indépendante de la version et de l'archétype** :
 > les invariants du Workload Management (WLM) Splunk Enterprise à
 > connaître avant de concevoir des pools ou des règles. Elle est lisible

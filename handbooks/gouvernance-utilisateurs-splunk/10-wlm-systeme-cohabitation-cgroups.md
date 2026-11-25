@@ -1,5 +1,9 @@
 # Chapitre 10 — Workload Management : couche système et cohabitation cgroups v1/v2
 
+> **Cadrage système historique ajouté le 19 novembre 2026**, notamment fondé sur la documentation Splunk 10.2 ; les déductions et points à tester ne sont pas des résultats de qualification.
+> Gouvernance : [synthèse 2.0](./synthese/README.md) ; [correspondance sujet/version](./README.md#table-des-matières).
+> Mise en place WLM : [chapitre configuration du handbook autonome](../splunk-wlm-configuration/02-configurer-wlm.md), dans son périmètre 10.4.5 ; exécution 10.2 non qualifiée. Ne pas combiner les anciennes étapes avec cette procédure.
+
 > Ce chapitre traite ce qui se passe **sous** WLM : le choix de la version
 > de cgroups, l'unité systemd de Splunk, les différences de traitement du
 > noyau entre cgroups v1 et v2, et le cas d'un cluster d'indexers dont les

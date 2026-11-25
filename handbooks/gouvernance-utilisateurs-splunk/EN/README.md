@@ -1,15 +1,15 @@
 # Splunk Usage Governance — A Practitioner's Handbook
 
-> **Workload Management revision pending (2026-11-18).** The French
-> canonical version revised chapters 3, 4, 6, 7 and 8 against the Splunk
-> 9.4 / 10.0 documentation and added chapter 9 (WLM key principles,
-> with a PDF). Main corrections: `mem_weight` is an absolute ceiling per
-> category, not a share; the `ingest` category also runs splunkd, the KV
-> store and Splunk Web; there is no `search_peer` category and no
-> workload rule on indexers; search pools map between search heads and
-> indexers **by name**. Until this English version is updated, the
-> French chapters are authoritative for WLM:
-> [chapitre 9 — principes clés](../09-wlm-principes-cles.md).
+> **Historical English corpus, not the current governance edition.** These
+> eight chapters describe the original **Splunk Enterprise 9.4.6** guide.
+> They do not include the French WLM corrections of **18 November 2026**,
+> French chapters 9/10, or the new governance synthesis.
+> Start with the [governance synthesis 2.0 (French)](../synthese/README.md)
+> and its [topic/version mapping](../README.md#table-des-matières).
+> For WLM implementation, use the standalone handbook's
+> [configuration chapter (French)](../../splunk-wlm-configuration/02-configurer-wlm.md),
+> qualified only within its stated **10.4.5** scope. **10.2 execution is not qualified.**
+> The historical WLM examples below are not an alternative procedure.
 
 > 🇫🇷 **Version française disponible** : [`../README.md`](../README.md)
 
@@ -22,10 +22,11 @@
 
 ## Note on the French-to-English mapping
 
-This handbook was originally written in French. The English version
-lives in this `EN/` subfolder and mirrors the French version
-chapter-for-chapter. File names have been adapted to be idiomatic in
-English rather than transliterated. The mapping is:
+This handbook was originally written in French. The historical English
+translation lives in this `EN/` subfolder and follows the original eight
+chapters, before the later French WLM revisions. It is not a translation
+of governance synthesis 2.0. File names have been adapted to be idiomatic
+in English rather than transliterated. The historical mapping is:
 
 | Source (FR) | This version (EN) |
 | --- | --- |

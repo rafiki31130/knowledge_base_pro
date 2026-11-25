@@ -1,170 +1,116 @@
 # Gouvernance des usages Splunk — guide d'approche
 
-> 🇬🇧 **English version available**: [`./EN/README.md`](./EN/README.md)
+**Parcours de référence : [Gouverner les usages Splunk, synthèse 2.0](./synthese/README.md).** Cette édition organise décisions, responsabilités, RBAC, parcours utilisateurs, méthode, garde-fous et suivi. Elle ne remplace pas les anciens documents par une réécriture de leur contenu.
 
-> Guide d'approche pour mettre en place une gouvernance complète des usages
-> sur un Search Head Cluster (SHC) Splunk Enterprise de taille moyenne à
-> grande (centaines à milliers d'utilisateurs). Le guide consolide une
-> méthode, un modèle d'habilitation, un dispositif de sensibilisation, un
-> cadre Workload Management, et un corpus de findings empiriques recueillis
-> sur Splunk Enterprise 9.4.6.
+**Pour mettre en place WLM : [02. Configurer WLM pas à pas](../splunk-wlm-configuration/02-configurer-wlm.md)** dans le [handbook WLM autonome](../splunk-wlm-configuration/README.md). Les anciens chapitres WLM ci-dessous sont historiques, pas une procédure actuelle à combiner avec ce handbook.
+
+> Langues : français canonique. La synthèse 2.0 est uniquement française.
+> Le [corpus anglais conservé](./EN/README.md) traduit l'ancien guide 9.4.6,
+> sans les corrections WLM françaises de novembre 2026 ; il ne traduit pas la synthèse.
 
 ## À qui ce guide s'adresse
 
-- **Architectes Splunk** qui doivent cadrer ou refondre la gouvernance d'un
-  SHC existant.
-- **Sysadmins Splunk seniors** qui héritent d'une plateforme sans modèle
-  documenté et doivent décider quoi en faire.
-- **Chefs de projet techniques** qui pilotent une mise en conformité ou un
-  durcissement d'envergure et veulent une méthode reproductible.
-
-Prérequis implicites : vous savez ce qu'est un Search Head Cluster, vous
-lisez sans peine un `authorize.conf`, vous avez déjà déployé une app
-Splunk, vous comprenez ce que `srchJobsQuota` plafonne et ce qu'une saved
-search est. Ce guide n'enseigne pas Splunk — il enseigne comment en
-**gouverner** les usages à l'échelle.
+Responsables de service, architectes, responsables des usages, administrateurs seniors et référents sécurité/IAM d'une plateforme Splunk Enterprise autogérée, notamment avec SHC et indexeurs partagés. Le lecteur connaît rôles, applications, knowledge objects et recherches planifiées.
 
 ## Ce que ce guide couvre
 
-- **Pourquoi** un projet de gouvernance des usages est nécessaire et quels
-  sont les symptômes annonciateurs (chapitre 1).
-- **Comment** mener un projet de gouvernance : méthode de cadrage, maquette
-  empirique, audit indépendant, handbooks (chapitre 2).
-- **Quatre axes structurants** qui se combinent : durcissement des droits
-  par défaut, modèle d'habilitation hybride, sensibilisation pédagogique,
-  Workload Management (chapitre 3).
-- **Findings empiriques 9.4.6** documentés et opposables : non-révocabilité
-  d'une capability héritée, défaillance des quotas hérités, `max()`
-  multi-rôles, `display_message` qui n'existe pas, ACL d'app write-sans-read
-  invisible, et autres pièges (chapitre 4).
-- **Guides opérationnels** par axe (chapitres 5 à 7) : audit RBAC,
-  conception RBAC progressive, audit WLM, conception WLM, volet indexers.
-- **Recommandations chiffrées** issues de l'état de l'art (chapitre 8).
-- **Principes clés du Workload Management** (chapitre 9) : fiche de
-  référence indépendante de la version, sourcée, avec sa
-  [version PDF](./PDF/09-wlm-principes-cles.pdf) en pièce jointe.
-- **Couche système du Workload Management** (chapitre 10) : cgroups v1/v2,
-  unité systemd, cohabitation des deux modes dans un cluster d'indexers.
+La [synthèse](./synthese/README.md#sommaire) constitue un ensemble cohérent en six chapitres :
+
+| Chapitre | Objet |
+| --- | --- |
+| [00. Décisions et responsabilités](./synthese/00-decisions-et-responsabilites.md) | Politique, arbitrage, redevables et registre de décisions |
+| [01. Habilitations et RBAC](./synthese/01-habilitations-rbac.md) | Catalogue de profils, droits effectifs, cumuls et cycle de vie |
+| [02. Parcours et responsabilisation](./synthese/02-parcours-et-responsabilisation.md) | Accompagnement, contenu partagé et exceptions |
+| [03. Méthode de transformation](./synthese/03-methode-de-transformation.md) | Baseline, qualification, pilote, vagues et réception |
+| [04. Garde-fous et arbitrage WLM](./synthese/04-garde-fous-et-arbitrage-wlm.md) | Politique de ressources et remise à l'équipe de configuration |
+| [05. Suivi et revue](./synthese/05-suivi-et-revue.md) | Indicateurs, couverture, limites de preuve et décisions correctives |
+
+Les anciens chapitres restent des références historiques ciblées. La [table de correspondance](#table-des-matières) indique leur version et le point de lecture approprié aujourd'hui.
 
 ## Ce que ce guide ne couvre pas
 
-- L'installation et l'exploitation d'un SHC (`Distributed Deployment
-  Manual` Splunk).
-- L'écriture de SPL au quotidien — voir le
-  [Splunk Power-User Handbook](../splunk-user-handbook/README.md) du même
-  dépôt pour les bonnes pratiques côté analyste.
-- Les sujets cloud, SOAR, Observability, ES, ITSI.
-- Les détails d'intégration d'un IdP spécifique (ADFS, Azure AD, Okta) — on
-  reste IdP-agnostique et on signale les invariants.
+- La configuration WLM, systemd/cgroups et les étapes de distribution : voir le [chapitre configuration du handbook WLM](../splunk-wlm-configuration/02-configurer-wlm.md).
+- L'installation de Splunk ou d'un SHC, les intégrations IdP propres à une organisation et les procédures Cloud.
+- L'écriture quotidienne de SPL : voir le [handbook utilisateur](../splunk-user-handbook/README.md).
+- Le catalogue complet des activités RUN : voir le [handbook d'exploitation](../splunk-exploitation-handbook/README.md).
+- Une nouvelle qualification de binaire ou un dimensionnement universel.
 
 ## Comment l'utiliser
 
-Le guide est conçu pour être lu **séquentiellement** la première fois : la
-méthode (chapitre 2) éclaire les axes (chapitre 3), qui motivent les
-findings (chapitre 4), qui justifient les guides opérationnels (chapitres
-5-7).
+1. Pour décider et organiser les usages, commencer par la [synthèse 2.0](./synthese/README.md).
+2. Pour retrouver un constat ou un ancien lien, utiliser la table historique ci-dessous. Les chemins, titres de chapitres et ancres des documents conservés ne changent pas.
+3. Pour configurer WLM, lire le [périmètre et les limites du handbook autonome](../splunk-wlm-configuration/README.md), puis son [chapitre 02](../splunk-wlm-configuration/02-configurer-wlm.md). Ne pas assembler des étapes de versions différentes.
 
-Une fois la première lecture faite, chaque chapitre se relit
-indépendamment. Les chapitres 5 à 8 sont les chapitres « de référence »
-qu'on rouvre au moment d'une action concrète. Le chapitre 4 (findings) est
-le chapitre qu'on cite pour défendre une décision technique face à une
-contre-proposition mal informée.
+```mermaid
+flowchart TD
+    L["Besoin du lecteur"] --> G["Décider et gouverner<br/>synthèse 2.0"]
+    L --> H["Retrouver une référence<br/>corpus historique FR, EN, PDF"]
+    L --> W["Configurer et qualifier WLM<br/>handbook autonome"]
+    H --> G
+    H --> W
+    G --> W
+    W --> G
+```
 
 ## Versionnage et hypothèses
 
-Ce guide est écrit contre **Splunk Enterprise 9.4.6** on-prem, en
-configuration Search Head Cluster avec indexers mutualisés. Les findings
-empiriques portent l'étiquette 9.4.6 quand ils ont été observés. Si une
-version mineure ultérieure de la branche 9.4 modifie un comportement
-listé, le chapitre 4 le signalera.
+| Ensemble | Version et portée | Statut de preuve |
+| --- | --- | --- |
+| Synthèse de gouvernance | Édition **2.0, 25 novembre 2026** | Recomposition éditoriale du corpus public, sans nouveau test Splunk ni nouvelle vérification Web |
+| Ancien guide, chapitres 1 à 8 | Référence **Splunk Enterprise 9.4.6** ; révision WLM française du **18 novembre 2026** sur 3, 4, 6, 7 et 8 | Observations historiques 9.4.6 et corrections documentaires identifiées, pas qualification des builds ultérieurs |
+| Ancienne fiche 9 et PDF | Fiche du **18 novembre 2026**, confrontée notamment aux docs **9.4/10.0**, avec références complémentaires **9.2/9.3/10.2** | La formulation ancienne « indépendante de la version » ne vaut pas validation de toute version |
+| Ancien chapitre 10 | Ajout du **19 novembre 2026** ; cadrage documentaire notamment **Splunk 10.2**, Linux, systemd et RHEL 8/9 | Distingue documenté, déduit et à tester ; pas une qualification exécutée 10.2 |
+| Corpus EN | Traduction historique des chapitres 1 à 8 sur **9.4.6**, antérieure à la révision WLM FR du 18 novembre 2026 | Ne traduit ni les chapitres FR 9/10 ni la synthèse 2.0 ; ne pas utiliser ses anciens exemples WLM comme procédure |
+| Handbook WLM autonome | Édition **1.0, 24 novembre 2026**, publiée séparément | Qualification décrite sur **10.4.5** ; **aucun résultat d'exécution 10.2**, voir [transposition](../splunk-wlm-configuration/07-transposition-102.md) |
 
-**Révision WLM du 2026-11-18.** Les chapitres 3, 4, 6, 7 et 8 ont été
-confrontés à la documentation Splunk 9.4 et 10.0, et le chapitre 9
-ajouté. Principales corrections : sémantique de `mem_weight` (plafond
-absolu, pas une part), contenu réel des catégories `ingest` et `misc`,
-absence de catégorie `search_peer` et de règles côté indexer,
-correspondance des pools SH ↔ indexers par leur nom, rechargement
-documenté des peers après bundle, syntaxe de plusieurs règles types.
-Chaque correction est signalée dans le chapitre concerné. La
-[version anglaise](./EN/README.md) n'intègre pas encore cette révision :
-pour le Workload Management, la version française fait foi.
-
-L'archétype visé est un SHC d'environ mille utilisateurs, applications
-découpées par production applicative, partageant des indexers avec
-d'autres SHC. Les paliers chiffrés et les pourcentages de pool sont
-calibrés pour cet archétype. À adapter au contexte — chaque
-recommandation chiffrée porte la mention « à adapter au contexte ».
+L'archétype de l'ancien guide était un SHC d'environ mille utilisateurs. Ses seuils IAM, quotas, répartitions de profils et pourcentages WLM ne sont pas reconduits comme prescriptions universelles par la synthèse.
 
 ## Conventions
 
+Français par défaut, un H1 par page, liens Markdown relatifs et sources en fin de chapitre. La nouvelle synthèse et les anciens documents ont des statuts éditoriaux distincts ; un renvoi n'efface pas les limites de preuve du document visé.
+
 ### Placeholders
 
-Pour rester anonymisable et reproductible, le guide utilise des
-placeholders cohérents d'un chapitre à l'autre.
-
-| Catégorie | Placeholder canonique |
-| --- | --- |
-| Index opérationnels | `idx_<perim>` (ex. `idx_network`, `idx_security`, `idx_system`) |
-| Périmètres métier | `<perim>` (ex. `network`, `security`, `system`) |
-| Productions applicatives | `<prod>` (ex. `<prod>_app`, `app_<prod>`) |
-| Rôles atomiques | `data_<perim>`, `feature_<cap>`, `app_<prod>`, `quota_<palier>` |
-| Rôles composites | `metier_<profil>_<perim>`, `owner_app_<prod>`, `admin_iam`, `admin_ops` |
-| Paliers de quotas | `quota_base`, `quota_plus`, `quota_max` |
-| Pools WLM | `admin`, `scheduled`, `ad_hoc`, `bulk`, `accel` |
-| Hostnames | `sh01`, `idx01`, `cm01`, `ds01` |
-| Domaines | `example.com`, `corp.example.com` |
-| IP / CIDR | `10.0.0.0/24`, `192.0.2.10` (RFC 5737) |
-| Utilisateurs | `alice`, `bob`, `svc_app` |
-
-Quand un exemple utilise une valeur particulière (`metier_consultatif_network`
-plutôt que `metier_<profil>_<perim>`), c'est un **exemple typé** ; il
-n'est pas normatif. Le pattern à retenir est la forme générique.
+Les exemples historiques utilisent notamment `idx_<perim>`, `data_<perim>`, `feature_<cap>`, `app_<prod>` et `metier_<profil>_<perim>`. Ce sont des formes génériques, pas des identifiants d'une plateforme réelle. Les noms de pools de l'ancien guide ne constituent pas une nomenclature actuelle imposée.
 
 ### Notation des recherches SPL
 
-Les SPL sont en blocs fenced ```` ```spl ````. Les commandes shell sont en
-```` ```bash ````. Les configurations Splunk sont en ```` ```ini ```` ou
-```` ```conf ````.
+Blocs `spl` pour SPL, `bash` pour les commandes et `ini` ou `conf` pour les configurations. La synthèse n'ajoute pas de recette WLM ni de commande d'administration ; elle renvoie à leur source spécialisée.
 
 ### Citation des sources
 
-Les affirmations factuelles pointent vers la documentation officielle
-Splunk 9.4 quand elles s'en réclament. Quand une affirmation a été
-**observée empiriquement sur lab 9.4.6** et qu'elle diverge de la
-documentation, le chapitre 4 (findings) en porte la trace.
+Les sources des nouveaux chapitres sont les documents publics du dépôt lus pour cette synthèse. Les références éditeur des anciens documents restent attachées à leurs versions et à leurs avertissements. Leur présence n'atteste pas un nouvel accès Web ni un nouvel essai technique.
 
 ## Table des matières
 
-| # | Chapitre | Objet |
-| --- | --- | --- |
-| 1 | [Pourquoi un projet de gouvernance](01-pourquoi-gouverner.md) | Symptômes, dérives, enjeu métier |
-| 2 | [Méthode de projet](02-methode-projet.md) | Cycle cadrage → maquette → audit → handbook |
-| 3 | [Les quatre axes structurants](03-quatre-axes.md) | Vue d'ensemble et articulation |
-| 4 | [Findings empiriques Splunk 9.4.6](04-findings-empiriques.md) | Comportements opposables vs documentation |
-| 5 | [Guide RBAC — audit, conception, déploiement](05-guide-rbac.md) | Audit, modèle hybride, paliers, SAML |
-| 6 | [Guide Workload Management — search heads](06-guide-wlm-sh.md) | Pools, règles, monitor-only, enforce |
-| 7 | [Guide Workload Management — indexers](07-guide-wlm-indexers.md) | Correspondance des pools par nom, protection de l'ingestion, propagation cluster manager |
-| 8 | [Recommandations chiffrées et annexes](08-recommandations-chiffrees.md) | Paliers, pourcentages, glossaire, SPL prêtes à l'emploi |
-| 9 | [Workload Management — principes clés](09-wlm-principes-cles.md) ([PDF](./PDF/09-wlm-principes-cles.pdf)) | Invariants CPU/mémoire, catégories, mode distribué, règles, pièges, retours terrain |
-| 10 | [Workload Management — couche système et cohabitation cgroups v1/v2](10-wlm-systeme-cohabitation-cgroups.md) | Détection de la version de cgroups, unité systemd, différences noyau v1/v2, parcs mixtes, visibilité |
+### Correspondance par sujet et version
+
+**Corpus historique conservé**, sans déplacement ni suppression. Les encadrés de tête distinguent le document ancien du parcours de référence ; le corps et les ancres restent conservés. Les dates et portées ci-dessous qualifient des documents, pas l'état courant d'une plateforme.
+
+| Sujet | Document FR conservé | Correspondance EN historique | Version ou révision | Lecture de référence |
+| --- | --- | --- | --- | --- |
+| Enjeux de gouvernance | [1. Pourquoi gouverner](./01-pourquoi-gouverner.md) | [1. Why governance](./EN/01-why-governance.md) | Guide 9.4.6 | [Décisions et responsabilités](./synthese/00-decisions-et-responsabilites.md) |
+| Méthode | [2. Méthode de projet](./02-methode-projet.md) | [2. Project method](./EN/02-project-method.md) | Guide 9.4.6 | [Méthode de transformation](./synthese/03-methode-de-transformation.md) |
+| Axes et sensibilisation | [3. Quatre axes](./03-quatre-axes.md) | [3. Four axes](./EN/03-four-axes.md) | 9.4.6 ; WLM FR révisé le 18 novembre 2026, non reporté en EN | [Parcours](./synthese/02-parcours-et-responsabilisation.md) et [garde-fous](./synthese/04-garde-fous-et-arbitrage-wlm.md) |
+| Comportements empiriques | [4. Findings](./04-findings-empiriques.md) | [4. Empirical findings](./EN/04-empirical-findings.md) | Observations 9.4.6 ; corrections documentaires WLM FR du 18 novembre 2026 | [RBAC et tests à prévoir](./synthese/01-habilitations-rbac.md#ne-pas-transformer-un-finding-en-loi-universelle) ; conserver la version de chaque finding |
+| RBAC et cycle de vie | [5. Guide RBAC](./05-guide-rbac.md) | [5. RBAC guide](./EN/05-rbac-guide.md) | Guide 9.4.6 | [Habilitations et RBAC](./synthese/01-habilitations-rbac.md) ; ancien guide comme détail historique |
+| WLM search heads | [6. Ancien guide WLM SH](./06-guide-wlm-sh.md) | [6. Historical WLM SH guide](./EN/06-wlm-search-head-guide.md) | 9.4.6 ; révision documentaire FR 9.4/10.0 du 18 novembre 2026, non reportée en EN | [Configurer WLM, chapitre 02](../splunk-wlm-configuration/02-configurer-wlm.md) et son périmètre 10.4.5 |
+| WLM indexeurs et distribution | [7. Ancien guide WLM indexeurs](./07-guide-wlm-indexers.md) | [7. Historical WLM indexers guide](./EN/07-wlm-indexers-guide.md) | 9.4.6 ; révision documentaire FR 9.4/10.0 du 18 novembre 2026, non reportée en EN | [Configuration distribuée WLM](../splunk-wlm-configuration/02-configurer-wlm.md) ; ne pas reprendre l'ancien ordre « indexeurs d'abord » |
+| Chiffres, registre et glossaire | [8. Recommandations historiques](./08-recommandations-chiffrees.md) | [8. Historical recommendations](./EN/08-recommendations.md) | Archétype 9.4.6 ; WLM FR révisé le 18 novembre 2026, EN non aligné | [Suivi et revue](./synthese/05-suivi-et-revue.md) ; [dimensionnement WLM](../splunk-wlm-configuration/06-dimensionnement-et-retour.md) |
+| Principes WLM | [9. Ancienne fiche](./09-wlm-principes-cles.md) et [PDF inchangé](./PDF/09-wlm-principes-cles.pdf) | Pas de traduction EN | Fiche du 18 novembre 2026, références 9.4/10.0 et complémentaires | [Modèle WLM autonome](../splunk-wlm-configuration/01-modele-wlm.md), puis [configuration](../splunk-wlm-configuration/02-configurer-wlm.md) |
+| Système et cgroups mixtes | [10. Ancien cadrage système](./10-wlm-systeme-cohabitation-cgroups.md) | Pas de traduction EN | Ajout du 19 novembre 2026, documentation 10.2 et sources système ; déductions et tests ouverts | [Cgroups mixtes, observations 10.4.5](../splunk-wlm-configuration/04-cgroups-mixtes.md) ; [transposition 10.2 non qualifiée](../splunk-wlm-configuration/07-transposition-102.md) |
+
+### Limites des anciens guides WLM
+
+Les chapitres historiques 2, 3, 6 et 7 emploient des notions d'« observation » ou de « monitor-only » qui peuvent laisser croire à une activation sans effet ; certains proposent les indexeurs avant les search heads. **Activer des pools active des plafonds, même sans règle bloquante.** Pour le profil qualifié du handbook autonome, suivre sa [séquence SHC puis pairs](../splunk-wlm-configuration/02-configurer-wlm.md#8-activez-les-shc-avant-les-pairs), pas une combinaison des deux approches.
+
+Le PDF reste une pièce historique du 18 novembre 2026, non régénérée pour la synthèse. Ses liens directs restent valides ; il ne contient pas les présents avertissements. Son statut est porté ici et dans la [fiche Markdown qui l'accompagne](./09-wlm-principes-cles.md).
 
 ## Sources globales
 
-Le guide s'appuie sur la documentation officielle Splunk 9.4 :
-
-- [Securing Splunk Enterprise 9.4 — Roles and capabilities](https://help.splunk.com/en/splunk-enterprise/administer/secure-splunk-enterprise/9.4/define-roles-on-the-splunk-platform/about-defining-roles-with-capabilities)
-- [Admin Manual 9.4 — Users and roles](https://help.splunk.com/en/splunk-enterprise/administer/admin-manual/9.4/users-and-role-based-access-control)
-- [authorize.conf 9.4 spec](https://help.splunk.com/en/data-management/splunk-enterprise-admin-manual/9.4/configuration-file-reference/9.4.5-configuration-file-reference/authorize.conf)
-- [authentication.conf 9.4 spec](https://help.splunk.com/en/data-management/splunk-enterprise-admin-manual/9.4/configuration-file-reference/9.4.5-configuration-file-reference/authentication.conf)
-- [SAML SSO 9.4](https://help.splunk.com/en/splunk-enterprise/administer/manage-users-and-security/9.4/use-saml-as-an-authentication-scheme-for-single-sign-on)
-- [Manage workloads 9.4 — overview](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/9.4/workload-management-overview)
-- [Configure workload pools 9.4](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/9.4/configure-workload-management/configure-workload-pools)
-- [Configure workload rules 9.4](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/9.4/configure-workload-management/configure-workload-rules)
-- [Configure admission rules to prefilter searches 9.4](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/9.4/configure-workload-management/configure-admission-rules-to-prefilter-searches)
-- [How workload management works 10.0](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/10.0/workload-management-overview/how-workload-management-works)
-- [Configure workload management on distributed deployments 10.0](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/10.0/configure-workload-management/configure-workload-management-on-distributed-deployments)
-- [Monitor workload management using the monitoring console 10.0](https://help.splunk.com/en/splunk-enterprise/administer/manage-workloads/10.0/monitor-workload-management)
-- [workload_pools.conf 10.0.4](https://help.splunk.com/en/splunk-enterprise/administer/admin-manual/10.0/configuration-file-reference/10.0.4-configuration-file-reference/workload_pools.conf), [workload_rules.conf 10.0.0](https://help.splunk.com/en/splunk-enterprise/administer/admin-manual/10.0/configuration-file-reference/10.0.0-configuration-file-reference/workload_rules.conf), [workload_policy.conf 10.0.1](https://help.splunk.com/en/splunk-enterprise/administer/admin-manual/10.0/configuration-file-reference/10.0.1-configuration-file-reference/workload_policy.conf)
-- Sources WLM complètes, dont retours d'expérience : [chapitre 9](./09-wlm-principes-cles.md#sources)
-- [Splunk Lantern — limit features that can impact platform performance](https://lantern.splunk.com/)
-- [NIST SP 800-63B — Digital Identity Guidelines](https://pages.nist.gov/800-63-3/sp800-63b.html) (cycle de vie IAM)
+- [Sources de la synthèse 2.0](./synthese/README.md#sources-globales).
+- [Findings historiques 9.4.6 et leurs sources](./04-findings-empiriques.md#sources).
+- [Guide RBAC historique et ses sources](./05-guide-rbac.md#sources).
+- [Ancienne fiche WLM et références versionnées](./09-wlm-principes-cles.md#sources).
+- [Ancien cadrage cgroups et niveaux de preuve](./10-wlm-systeme-cohabitation-cgroups.md#niveau-de-preuve).
+- [Handbook WLM autonome, sources et version de l'édition](../splunk-wlm-configuration/README.md#sources-globales).

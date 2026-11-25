@@ -1,5 +1,8 @@
 # Chapitre 5 — Guide RBAC : audit, conception, déploiement
 
+> **Document historique du guide Splunk 9.4.6.** Les éventuelles corrections documentaires de novembre 2026 restent identifiées dans le corps ; elles ne qualifient pas les builds ultérieurs.
+> Gouvernance : [synthèse 2.0](./synthese/README.md) ; [correspondance sujet/version](./README.md#table-des-matières).
+
 > Ce chapitre est le guide opérationnel complet du volet habilitation.
 > Il couvre l'audit pré-refonte d'un SHC existant, la conception du
 > modèle hybride atomiques/composites, l'articulation avec SAML, le
