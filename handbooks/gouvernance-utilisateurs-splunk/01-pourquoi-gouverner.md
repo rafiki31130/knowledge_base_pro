@@ -1,5 +1,8 @@
 # Chapitre 1 — Pourquoi un projet de gouvernance des usages
 
+> **Document historique du guide Splunk 9.4.6.** Les éventuelles corrections documentaires de novembre 2026 restent identifiées dans le corps ; elles ne qualifient pas les builds ultérieurs.
+> Gouvernance : [synthèse 2.0](./synthese/README.md) ; [correspondance sujet/version](./README.md#table-des-matières).
+
 > Une plateforme Splunk Enterprise de plusieurs centaines d'utilisateurs
 > sur un Search Head Cluster (SHC) dédié à une grande direction n'est pas
 > un produit qu'on installe et qu'on laisse vivre. C'est un écosystème

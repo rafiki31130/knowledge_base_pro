@@ -31,6 +31,7 @@ elle n'a pas sa place ici. Anonymiser ou reformuler.
 - [`concepts/`](./concepts) — Transverse : logs, regex, parsing, réseau…
 - [`cheat-sheets/`](./cheat-sheets) — Aide-mémoire commandes par techno.
 - [`handbooks/`](./handbooks) — Handbooks thématiques (livres Markdown) pour un profil de lecteur ciblé. Voir [`handbooks/README.md`](./handbooks/README.md) pour la structure d'un handbook.
+- [Gouvernance des usages Splunk](./handbooks/gouvernance-utilisateurs-splunk/README.md) — Synthèse française 2.0 : décisions, responsabilités/RBAC, parcours, méthode, garde-fous et suivi. Corpus historique FR/EN/PDF conservé avec correspondance par sujet/version ; configuration WLM dans le handbook autonome.
 - [Configurer et qualifier Splunk Workload Management](./handbooks/splunk-wlm-configuration/README.md) — Procédure distribuée, résultats 10.4.5, cgroups v1/v2, audit et retour arrière. Français ; aucune qualification 10.2 présumée.
 - [`change-plans/`](./change-plans) — Templates génériques de change plans (description, risques, plan, rollback, validation, réserves). Rédigés en anglais.
 - [`scripts/`](./scripts) — Scripts utilitaires génériques et réutilisables (un sous-dossier par script, avec README + schéma).

@@ -1,5 +1,10 @@
 # Chapter 2 — Project method
 
+> **Historical 9.4.6 chapter, not the current governance edition.**
+> Governance: [synthesis 2.0 (French)](../synthese/README.md) and [topic/version mapping](../README.md#table-des-matières).
+> WLM examples predate the French corrections of 18 November 2026. For implementation, use the standalone [configuration chapter (French)](../../splunk-wlm-configuration/02-configurer-wlm.md), within its stated 10.4.5 scope; 10.2 execution is not qualified.
+> Enabling pools already enforces limits; observation is not impact-free. Do not reuse the historical indexers-first activation sequence.
+
 > The method used to run a Splunk governance project matters as much
 > as its deliverables. This chapter pins down the four-stage cycle
 > that structures the project — scoping, maquette, independent

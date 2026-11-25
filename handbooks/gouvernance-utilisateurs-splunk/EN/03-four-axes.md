@@ -1,5 +1,10 @@
 # Chapter 3 — The four structuring axes
 
+> **Historical 9.4.6 chapter, not the current governance edition.**
+> Governance: [synthesis 2.0 (French)](../synthese/README.md) and [topic/version mapping](../README.md#table-des-matières).
+> WLM examples predate the French corrections of 18 November 2026. For implementation, use the standalone [configuration chapter (French)](../../splunk-wlm-configuration/02-configurer-wlm.md), within its stated 10.4.5 scope; 10.2 execution is not qualified.
+> Enabling pools already enforces limits; observation is not impact-free. Do not reuse the historical indexers-first activation sequence.
+
 > The governance project hinges on four coordinated axes that
 > reinforce each other. This chapter introduces each one, shows how
 > they articulate, and justifies the order in which to roll them out.

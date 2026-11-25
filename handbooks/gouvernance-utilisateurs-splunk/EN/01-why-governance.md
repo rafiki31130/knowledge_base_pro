@@ -1,5 +1,8 @@
 # Chapter 1 — Why a usage-governance project
 
+> **Historical 9.4.6 chapter, not the current governance edition.**
+> Governance: [synthesis 2.0 (French)](../synthese/README.md) and [topic/version mapping](../README.md#table-des-matières).
+
 > A Splunk Enterprise platform with hundreds of users on a Search Head
 > Cluster (SHC) dedicated to a large business unit is not a product
 > you install and walk away from. It is a living ecosystem: every day

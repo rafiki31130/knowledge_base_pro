@@ -1,5 +1,10 @@
 # Chapter 7 — Workload Management guide: indexers and distributed mode
 
+> **Historical 9.4.6 chapter, not the current governance edition.**
+> Governance: [synthesis 2.0 (French)](../synthese/README.md) and [topic/version mapping](../README.md#table-des-matières).
+> WLM examples predate the French corrections of 18 November 2026. For implementation, use the standalone [configuration chapter (French)](../../splunk-wlm-configuration/02-configurer-wlm.md), within its stated 10.4.5 scope; 10.2 execution is not qualified.
+> Enabling pools already enforces limits; observation is not impact-free. Do not reuse the historical indexers-first activation sequence.
+
 > **Revision pending (2026-11-18).** This chapter has been corrected in
 > the French canonical version, which is authoritative until this
 > translation is updated — see [the French chapter](../07-guide-wlm-indexers.md) and

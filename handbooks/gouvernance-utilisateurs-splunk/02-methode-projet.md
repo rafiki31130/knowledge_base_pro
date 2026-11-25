@@ -1,5 +1,10 @@
 # Chapitre 2 — Méthode de projet
 
+> **Document historique du guide Splunk 9.4.6.** Les éventuelles corrections documentaires de novembre 2026 restent identifiées dans le corps ; elles ne qualifient pas les builds ultérieurs.
+> Gouvernance : [synthèse 2.0](./synthese/README.md) ; [correspondance sujet/version](./README.md#table-des-matières).
+> Mise en place WLM : [chapitre configuration du handbook autonome](../splunk-wlm-configuration/02-configurer-wlm.md), dans son périmètre 10.4.5 ; exécution 10.2 non qualifiée. Ne pas combiner les anciennes étapes avec cette procédure.
+> **Attention :** activer les pools applique déjà des plafonds ; « observation » ne signifie pas absence d'effet. L'ancien ordre « indexeurs d'abord » ne remplace pas la séquence du handbook autonome.
+
 > La méthode de conduite d'un projet de gouvernance Splunk est aussi
 > importante que ses livrables. Ce chapitre fige le cycle à quatre temps
 > qui structure le projet — cadrage, maquette, audit indépendant,
