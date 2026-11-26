@@ -1,7 +1,15 @@
 ---
 title: Secrets (1Password CLI) & SSH
 category: cheat-sheets
-tags: [secrets, 1password, op, ssh, ssh-config, tunnels, scp, cheat-sheet]
+tags:
+  - secrets
+  - 1password
+  - op
+  - ssh
+  - ssh-config
+  - tunnels
+  - scp
+  - cheat-sheet
 created: 2026-06-08
 ---
 

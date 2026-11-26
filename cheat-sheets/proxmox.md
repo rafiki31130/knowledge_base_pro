@@ -1,7 +1,12 @@
 ---
 title: Proxmox VE
 category: cheat-sheets
-tags: [proxmox, virtualisation, kvm, lxc, cheat-sheet]
+tags:
+  - proxmox
+  - virtualisation
+  - kvm
+  - lxc
+  - cheat-sheet
 created: 2026-06-08
 ---
 

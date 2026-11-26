@@ -1,7 +1,13 @@
 ---
 title: Claude Code & MCP
 category: cheat-sheets
-tags: [claude-code, mcp, cli, llm, tooling, cheat-sheet]
+tags:
+  - claude-code
+  - mcp
+  - cli
+  - llm
+  - tooling
+  - cheat-sheet
 created: 2026-06-08
 ---
 

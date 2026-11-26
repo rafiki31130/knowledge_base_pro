@@ -1,7 +1,15 @@
 ---
 title: Stockage & NAS
 category: cheat-sheets
-tags: [stockage, nas, samba, cifs, nfs, fstab, backup, cheat-sheet]
+tags:
+  - stockage
+  - nas
+  - samba
+  - cifs
+  - nfs
+  - fstab
+  - backup
+  - cheat-sheet
 created: 2026-06-08
 ---
 

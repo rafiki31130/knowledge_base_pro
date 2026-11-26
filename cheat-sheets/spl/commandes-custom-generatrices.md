@@ -1,7 +1,15 @@
 ---
 title: Commandes de recherche personnalisées — une génératrice doit rendre des résultats, pas des événements
 category: cheat-sheets
-tags: [splunk, spl, custom-search-command, generating-command, sdk, chunked, reporting, cheat-sheet]
+tags:
+  - splunk
+  - spl
+  - custom-search-command
+  - generating-command
+  - sdk
+  - chunked
+  - reporting
+  - cheat-sheet
 created: 2026-08-13
 ---
 

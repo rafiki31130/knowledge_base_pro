@@ -1,7 +1,14 @@
 ---
 title: GitHub CLI (gh)
 category: cheat-sheets
-tags: [github, gh, cli, pull-request, issue, actions, cheat-sheet]
+tags:
+  - github
+  - gh
+  - cli
+  - pull-request
+  - issue
+  - actions
+  - cheat-sheet
 created: 2026-06-08
 ---
 

@@ -1,7 +1,13 @@
 ---
 title: Réseau & pfSense
 category: cheat-sheets
-tags: [reseau, pfsense, diagnostic, vlan, tcpdump, cheat-sheet]
+tags:
+  - reseau
+  - pfsense
+  - diagnostic
+  - vlan
+  - tcpdump
+  - cheat-sheet
 created: 2026-06-08
 ---
 

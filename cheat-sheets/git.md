@@ -1,7 +1,10 @@
 ---
 title: Git
 category: cheat-sheets
-tags: [git, vcs, cheat-sheet]
+tags:
+  - git
+  - vcs
+  - cheat-sheet
 created: 2026-05-23
 ---
 

@@ -1,7 +1,12 @@
 ---
 title: Linux & systemd
 category: cheat-sheets
-tags: [linux, systemd, journalctl, administration, cheat-sheet]
+tags:
+  - linux
+  - systemd
+  - journalctl
+  - administration
+  - cheat-sheet
 created: 2026-06-08
 ---
 

@@ -1,7 +1,13 @@
 ---
 title: HAProxy & TLS
 category: cheat-sheets
-tags: [haproxy, tls, ssl, openssl, reverse-proxy, cheat-sheet]
+tags:
+  - haproxy
+  - tls
+  - ssl
+  - openssl
+  - reverse-proxy
+  - cheat-sheet
 created: 2026-06-08
 ---
 

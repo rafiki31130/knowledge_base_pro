@@ -1,7 +1,13 @@
 ---
 title: Ansible
 category: cheat-sheets
-tags: [ansible, automation, playbook, vault, galaxy, cheat-sheet]
+tags:
+  - ansible
+  - automation
+  - playbook
+  - vault
+  - galaxy
+  - cheat-sheet
 created: 2026-06-08
 ---
 

@@ -1,7 +1,13 @@
 ---
 title: Home Assistant (CLI & API)
 category: cheat-sheets
-tags: [home-assistant, domotique, cli, api, yaml, cheat-sheet]
+tags:
+  - home-assistant
+  - domotique
+  - cli
+  - api
+  - yaml
+  - cheat-sheet
 created: 2026-06-08
 ---
 

@@ -1,7 +1,15 @@
 ---
 title: Splunk | rest - /services ou /servicesNS, manifeste par type d'information
 category: cheat-sheets
-tags: [splunk, rest, servicesNS, namespace, acl, inventaire, shc, cheat-sheet]
+tags:
+  - splunk
+  - rest
+  - servicesNS
+  - namespace
+  - acl
+  - inventaire
+  - shc
+  - cheat-sheet
 created: 2026-09-30
 ---
 

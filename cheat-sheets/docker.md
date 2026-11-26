@@ -1,7 +1,11 @@
 ---
 title: Docker
 category: cheat-sheets
-tags: [docker, conteneurs, compose, cheat-sheet]
+tags:
+  - docker
+  - conteneurs
+  - compose
+  - cheat-sheet
 created: 2026-06-08
 ---
 

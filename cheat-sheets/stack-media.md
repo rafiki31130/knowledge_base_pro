@@ -1,7 +1,14 @@
 ---
 title: Stack média conteneurisée
 category: cheat-sheets
-tags: [docker, media, arr, qbittorrent, gluetun, vpn, cheat-sheet]
+tags:
+  - docker
+  - media
+  - arr
+  - qbittorrent
+  - gluetun
+  - vpn
+  - cheat-sheet
 created: 2026-06-08
 ---
 

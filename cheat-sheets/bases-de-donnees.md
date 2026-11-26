@@ -1,7 +1,14 @@
 ---
 title: Bases de données (CouchDB & MongoDB)
 category: cheat-sheets
-tags: [bases-de-donnees, couchdb, mongodb, nosql, curl, mongosh, cheat-sheet]
+tags:
+  - bases-de-donnees
+  - couchdb
+  - mongodb
+  - nosql
+  - curl
+  - mongosh
+  - cheat-sheet
 created: 2026-06-08
 ---
 

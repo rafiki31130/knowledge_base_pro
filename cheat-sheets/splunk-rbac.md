@@ -1,7 +1,14 @@
 ---
 title: Splunk RBAC (rôles, capabilities, héritage, plancher [default])
 category: cheat-sheets
-tags: [splunk, rbac, authorize, roles, capabilities, least-privilege, cheat-sheet]
+tags:
+  - splunk
+  - rbac
+  - authorize
+  - roles
+  - capabilities
+  - least-privilege
+  - cheat-sheet
 created: 2026-06-27
 ---
 
